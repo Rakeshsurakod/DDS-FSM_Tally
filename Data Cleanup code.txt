@@ -1,0 +1,14 @@
+[#Menu:Gatewayof Tally] 
+	Add:Key Item : Before: @@locQuit : Data Cleanup(HSN) : C : Call	: HSN Fix
+	Add:Key Item : BLANK
+
+[Function:HSNFix ]
+	Variable	: HSNCode	: Number
+ 201	: Walk Collection:StockItem
+ Local Formula	: HSNGstCode		: $(StockItem,$Name).GSTDETAILS[LAST].HSNCode
+ 202	: Set: HSNcode	: @HSNGstCode
+ 203	: Log: ##HSNcode
+ 204	: Log: $Name
+ 205	: Modify Object: (StockItem,$Name).GSTDETAILS[LAST].HSNCode: ##HSNcode;"123456
+ 206	: End Walk
+ 

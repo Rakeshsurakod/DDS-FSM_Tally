@@ -1,0 +1,115 @@
+;;;;;;;;; Om Shri Ganesh ;;;;;;;;;;;
+
+
+[Function: InsertCreateGSTeWayBillDetailssync]
+	Variable	: ValidUpTo		: String
+	Variable	: UpdatedDate	: String
+	006	:	Walk Collection:DymsJsonSalesEwaybillCollection
+	007	:	Set	: ValidUpTo		:	$Dyms_Validupto
+	008	:	Set	: UpdatedDate	:	$Dyms_Updateddate
+	005	: 		Insert Collection Object			: EwayBillDetails
+	010	:		Set Value	: BillNumber			: $Dyms_BillNumber
+	015	: 		Set Value	: BillDate 	      		: $$Date:$Dyms_BillDate
+	;020	:		Set Value	: ConsolidatedBillNumber: $tempGSTewayconsBillNumber
+	;025	:		Set Value	: ConsolidatedBillDate	: $tempGSTewayconsBillDate
+	030	: 		Set Value	: SubType           	: $$String:$Dyms_SubType;"Supply";$tempGSTewaysubType
+	035	: 		Set Value	: DocumentType      	: $$String:$Dyms_DocumentType;"Tax Invoice";$tempGSTewaydocumentType
+	;040	: 		Set Value	: BillStatus        	: $tempGSTewayStatus
+	045	: 		Set Value	: IgnoreGSTINValidation	: No
+	
+;	050	: 		Set Value	: ConsignorName			: $tempGSTewayConsignor
+;	055	:   	Set Value	: ConsignorGSTIN   		: $tempGSTewayconsignorTin
+;	060	: 		Set Value	: ConsignorAddressType	: ##tempConsignorAddrType
+;	125	:		Walk Collection	: GSTeWayConsignorAddress
+;	130	:			Insert Collection Object	: ConsignorAddress
+;	135	: 				Set Value	: ConsignorAddress		: $tempConsignorAddress
+;	140	:			SET Target	: ..
+;	145	:       END WALK
+	175	: 		Set Value	: ConsignorPlace		: $$String:$Dyms_ConsignorPlace;"Mangalore";$tempGSTewayFromPlace
+	180	: 		Set Value	: ConsignorPincode		: $$Number:$Dyms_ConsignorPincode;"575005";$tempGSTewayPincode
+;	185	: 		Set Value	: ConsignorStateName	: $$String:"Karnataka";$tempGSTewayconsignorState
+	190	:		Set Value	: ShippedFromState		: $$String:$Dyms_ShippedFromState;"Karnataka";$tempGSTewayconsShipFromState
+	
+	195	: 		Set Value	: ConsigneeName			: $Dyms_Consigneemailingname;"Shiv Ganga Marbles";"Shiv ganga Marbles";$tempGSTewayConsignee
+;	200	:		Set Value	: ConsigneeAddressType	: ##tempConsigneeAddrType
+;	205	:		Walk Collection	: GSTeWayConsigneeAddress
+	210	:			Insert Collection Object	: ConsigneeAddress
+	215	: 				Set Value	: ConsigneeAddress		: $Dyms_ConsigneeAddress;"Bangalore";$tempConsigneeAddress
+	220	:			SET Target	: ..
+;	225	:       END WALK
+	255	: 		Set Value	: ConsigneePlace	    : $$STRING:$Dyms_ConsigneePlace;"Delhi";$tempGSTewayconsFromPlace
+    260	: 		Set Value	: ConsigneePincode		: $$STRING:$Dyms_ConsigneePincode;"110085";$tempGSTewayConsPincode
+ ;   265	: 		Set Value	: ConsigneeStateName    : $$STRING:"Delhi";$tempGSTewayConsState
+	270	:		Set Value	: ShippedToState		: $$STRING:$Dyms_ShippedToState;"Delhi";$tempGSTewayconsShipToState
+;    275	: 		Set Value	: ConsigneeGSTIN	    : $$STRING:"07BAGPG3952C1Z1";$tempGSTewayConsTin
+	276	:		Set Value	: Updateddate			: $$DateTime:##UpdatedDate
+	277	:		Set Value	: Validupto				: ##ValidUpTo 
+	278	:	End Walk
+	
+	280	:			Insert Collection Object	: TransportDetails
+	281	:	Walk Collection:DymsJsonSalesTransportCollection
+	285	:				Set Value	: TransporterName	 : $$String:$Dyms_TransporterName
+    290	:				Set Value	: DocumentNumber	 : $Dyms_DocumentNumber
+    295	:				Set Value	: DocumentDate       : $$Date:$Dyms_DocumentDate
+    300	:				Set Value	: TransporterID      : $$String:$Dyms_TransporterID
+    305	:				Set Value	: TransportMode    	 : $$String:$Dyms_TransportMode
+    310	:				Set Value	: VehicleNumber      : $$String:$Dyms_VehicleNumber
+;	315	: 				Set Value	: OldVehicleType	 : $tempGSTewayVehicleType
+	317	: 				Set Value	: VehicleType		 : $$String:$Dyms_VehicleType
+    320	:				Set Value	: Distance			 : $$Number:$Dyms_Distance
+	321	:	End Walk	
+	325	:				Set Value	: IgnoreVehicleNoValidation: No	
+	326	: 				Set Value	: ISTRANSIDPENDING	 : No
+	327	: 				Set Value	: ISTRANSIDUPDATED	 : No
+	328	: 				Set Value	: ISEXPORTEDFORTRANSPORTERID : No
+	350	: 				Set Value	: IsPartBUpdated			: Yes
+	355	: 				Set Value	: IsExportedforPartB		: No
+	360	: 				Set Value	: IsPartBPending			: No
+	462	:				If		 	: NOT No
+	465 :					Set Value	: IGNOREPARTBVALIDATION		 : NO
+	449	:					Set Value	: IGNORETRANSIDVALIDATION	 : No
+	470	:				Else		
+	475	:					Set Value	: IGNOREPARTBVALIDATION		 : Yes
+	480	: 					Set Value	: IGNORETRANSIDVALIDATION	 : yes
+	485	:				END IF 		
+	530	:			Set Target	: ..
+	535	:  Set Target	: ..
+	
+
+[Collection:DymsJsonSalesEwaybillCollection]
+	
+	Source Collection:DymsJsonSalesCollection	
+	Walk				:  EWAYBILL
+	compute				:	Dyms_VoucherVoucherNumberLed:	$.VOUCHERNUMBER
+	compute				:	Dyms_BillNumber				:	$BillNumber
+	compute				:	Dyms_BillDate				:	$BillDate
+	Compute				:	Dyms_SubType				:	$SubType
+	Compute				:	Dyms_DocumentType			:	$DocumentType
+	Compute				:	Dyms_ConsignorPlace			:	$ConsignorPlace
+	Compute				:	Dyms_ConsignorPincode		:	$ConsignorPincode
+	Compute				: 	Dyms_ShippedFromState		: 	$ShippedFromState
+	Compute				:	Dyms_Consigneemailingname	:	$Consigneemailingname
+	Compute				:	Dyms_ConsigneeAddress		:	$ConsigneeAddress
+	Compute				:	Dyms_ConsigneePlace			:	$ConsigneePlace
+	Compute				:	Dyms_ConsigneePincode		:	$ConsigneePincode
+	Compute				:	Dyms_Consigneegstin			:	$Consigneegstin
+	Compute				: 	Dyms_ShippedToState			: 	$ShippedToState
+	Compute				:	Dyms_Validupto				:	$Validupto
+	Compute				:	Dyms_Updateddate			:	$Updateddate
+	Filter : SalesLedVchnoFilter
+
+
+[Collection:DymsJsonSalesTransportCollection]
+	
+	Source Collection:DymsJsonSalesCollection	
+	Walk				:  Transport
+	compute				:	Dyms_VoucherVoucherNumberLed:	$.VOUCHERNUMBER
+	compute				:	Dyms_TransporterName		:	$TransporterName
+	compute				:	Dyms_DocumentNumber			:	$DocumentNumber
+	Compute				:	Dyms_DocumentDate			:	$DocumentDate
+	Compute				:	Dyms_TransporterID			:	$TransporterID
+	Compute				:	Dyms_TransportMode			:	$TransportMode
+	Compute				:	Dyms_VehicleNumber			:	$VehicleNumber
+	Compute				: 	Dyms_VehicleType			: 	$VehicleType
+	Compute				:	Dyms_Distance				:	$Distance
+	Filter : SalesLedVchnoFilter

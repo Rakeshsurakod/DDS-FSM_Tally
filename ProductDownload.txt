@@ -1,0 +1,283 @@
+;;;;;;;;;; Jai Shree Raam ;;;;;;;;;;;
+
+;;;;;;;; FTP Directory collection
+[Collection: Dyms_FTPDirectoryProductColl]
+	
+	Data Source : Directory	: @@RetailerProdctDownloadFTP     
+	Filter		: Dyms_FilterFiles
+	Format		: $Name, 25
+	Title       : "File Listing"
+	Sub Title	: "File Name", "File Size", "Read Only"
+
+;select $Name from Dyms_FTPDirectoryProductColl
+;;;;;;;; Local Directory collecction
+[Collection: Dyms_DirectoryProductColl]
+	
+	Data Source : Directory	: @@FSMProductfilepatch 
+	Filter		: Dyms_FilterFiles
+	Format		: $Name, 25
+	Title       : "File Listing"
+	Sub Title	: "File Name", "File Size", "Read Only"
+	
+;select $name from Dyms_DirectoryProductColl
+
+[Collection	:DymsJsonProductCollection]
+	
+	Data Source	: File JSON		: ##Dyms_LocalFileNames 
+	JSON Object Path	: "PRODUCT:1"
+	Fetch	: PRODUCT_NAME
+
+;select $PRODUCTNAME from DymsJsonProductCollection
+
+[Collection:DymsJsonProductCollections]
+	
+	Source Collection:DymsJsonProductCollection
+	Compute		: PRODUCTNAME					:	$$String:$PRODUCT_NAME
+	Walk		: PRODUCTDETAILS
+	Compute		: HSNCODE						: $HSNCODE
+	Compute		: IGSTPERC						: $IGSTPERC
+	Compute		: CGSTPERC						: $CGSTPERC
+	Compute		: SGSTPERC						: $SGSTPERC
+	Compute		: CESS							: $CESS
+	Compute		: APPLICABLEDATE				: $APPLICABLE_DATE
+	Compute		: GSTTaxability					: $GST_Taxability
+	Compute		: GSTCalcType					: $GST_CalcType
+	Filter		:Dyms_ProductFilter
+	
+;select $PRODUCTNAME, $HSNCODE from DymsJsonProductCollections
+
+
+[Function:Dyms_ProductDownload]
+
+	Variable	:Dyms_ServiceItemName	:String
+	Variable	:Dyms_ServiceItemParent	:String
+	Variable	:Dyms_ServiceItemUnit	:String	
+	Variable	:Dyms_SERVICEMRP		:Number	
+	Variable	:Dyms_HSNCODE			:Number	
+	Variable	:Dyms_IGSTPERC			:Number
+	Variable	:Dyms_CGSTPERC			:Number
+	Variable	:Dyms_SGSTPERC			:Number
+	Variable	:Dyms_CESSPERC			:Number
+	Variable	:Dyms_APPLICABLEDATE	:String
+	Variable	:Dyms_GSTTaxability		:String
+	Variable	:Dyms_GSTApplicability	:String
+	Variable	:Dyms_GSTCalcType		:String
+	Variable	:Dyms_LocalFileNames	:String
+	Variable	:Dyms_Service_Count		:Number	
+	Variable	:Errorcount				:Number	: 0
+	Variable	:Dyms_CountrMsgVAr1		:String
+	Variable	:Dyms_ItemExists		: String
+	Variable	:DymsLocalHostPathRetailer	: String
+	Variable	:ApplDateExists			: Logical
+	
+	00	:	Log: "Product is Running"	
+	020 :	Set			: DymsLocalHostPathRetailer			:	@@FSMProductfilepatch
+	034	:	If:$$IsInternetActive
+;	02  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "Product Download"
+;	03  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : ""
+	035	:	If:NOT $$IsEmptyCollection:Dyms_FTPDirectoryProductColl 
+
+;;;;;;;;;;;;;;;;; FTP File Download into local Machine ;;;;;;;;;;;;;;;;;;;;
+	036	:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:Dyms_FTPDirectoryProductColl 
+	037	:	Start Progress:(##Dyms_CountrMsgVAr1) : "Downloading Json Files From FTP" : "Please Wait" : ""
+ 	040 :	Walk Collection	:	Dyms_FTPDirectoryProductColl
+	056	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Downloading.."):($Name)
+  	055 : 	Copy File		: ##DymsLocalHostPathRetailer	:   @@RetailerProdctDownloadFTP+"/"+$Name
+	060	:	End Walk
+	061	:	End Progress
+
+	065	: Walk Collection	:	Dyms_DirectoryProductColl
+	068	:	Set	:	Dyms_LocalFileNames	:	""
+	070	:	Set	:	Dyms_LocalFileNames	:	@@FSMProductfilepatch+"\"+$Name
+	80	:	Set	:	Dyms_Service_Count	:	$$NumItems:DymsJsonProductCollection
+	
+	85	:	If:##Dyms_Service_Count>0
+	88	:	Start Batch Post:100
+	
+	;;;;;;;;;;;;;;;; Service Item Log File ;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+	121		: 	Set File Log On
+	122		: 	OPEN FILE :@@FSMProductLogfilepatch:Text:Write 
+	123		:	Write File Line	: "==========================================================================="
+	124		: 	Write File Line	: "Total Stock Items to Import - "+$$String:(##Dyms_Service_Count)+" On "+$$String:($$MachineDate)+"-"+$$String:($$MachineTime)
+	125		:	Close Target File
+	126		:	Set File Log Off
+	
+	90 		: Start Progress: (##Dyms_Service_Count) :($$LocaleString:"Importing"):"Stock Items " : ""
+	
+	110s	:	Set	:	Dyms_ServiceItemName		:""
+	111a	:	Set	:	Dyms_ServiceItemParent		:""
+	120a	:	Set	:	Dyms_SERVICEMRP				:""
+	115n	:	Set	:	Dyms_ServiceItemUnit		:""
+
+	100		: Walk Collection:DymsJsonProductCollection
+	110		:	Set :	Dyms_ServiceItemName		:$PRODUCT_NAME	
+	111		:	Set :	Dyms_ServiceItemParent		: If $PRODUCT_GROUP ="Primary" Then $$SysName:Primary Else $PRODUCT_GROUP
+	115		:	Set :	Dyms_ServiceItemUnit		:$PRODUCT_UNIT				
+	120		:   Set	:	Dyms_SERVICEMRP				:$PRODUCT_MRP
+	130		:	Set	:	Dyms_ItemExists				:$$IsEmpty:($Name:StockItem:##Dyms_ServiceItemName)
+
+	158a	:	Set	:	Dyms_HSNCODE				:""
+	159b	:	Set	:	Dyms_IGSTPERC				:""
+	160c	:	Set	:	Dyms_CGSTPERC				:""
+	161d	:	Set	:	Dyms_SGSTPERC				:""
+	161kl	:	Set	:	Dyms_CESSPERC				:""
+	158e	:	Set	:	Dyms_APPLICABLEDATE	    	:""
+    159f	:	Set	:	Dyms_GSTTaxability		    :""
+    160g	:	Set	:	Dyms_GSTApplicability	    :""
+    161h	:	Set	:	Dyms_GSTCalcType		    :""
+	
+	156		: Walk Collection:DymsJsonProductCollections
+	158		:	Set	:	Dyms_HSNCODE				:$HSNCODE			
+	159		:	Set	:	Dyms_IGSTPERC				:$IGSTPERC			
+	160		:	Set	:	Dyms_CGSTPERC				:$CGSTPERC			
+	161		:	Set	:	Dyms_SGSTPERC				:$SGSTPERC
+	161kdd	:	Set	:	Dyms_CESSPERC				:$CESS
+	158p	:	Set	:	Dyms_APPLICABLEDATE	   		:$APPLICABLEDATE 
+    159q	:	Set	:	Dyms_GSTTaxability		    :$GSTTaxability		
+    160r	:	Set	:	Dyms_GSTApplicability	    :"Applicable";$GSTApplicability	
+    161s	:	Set	:	Dyms_GSTCalcType		    :$GSTCalcType		
+
+	398     :   Do If :##Dyms_ItemExists        : New Object        : StockItem
+    400     :   Do If :Not ##Dyms_ItemExists    : New Object        : StockItem	:##Dyms_ServiceItemName    :Yes
+
+	401		:	Set Value				    : 	Name		      :	##Dyms_ServiceItemName
+	402     :	Set Value					:   Parent            :	If Not $$IsEmpty:##Dyms_ServiceItemParent Then ##Dyms_ServiceItemParent Else $Parent:StockItem:##Dyms_ServiceItemName 
+	1030 	: Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Importing Stock Item  "):(##Dyms_ServiceItemName)
+	
+	535		:	Do If :##Dyms_ItemExists    :Set Value					:	Baseunits			 :  ##Dyms_ServiceItemUnit
+	540		:	Set Value					:	GSTAPPLICABLE		 :	If ##Dyms_GSTApplicability="Applicable" Then $$SysName:Applicable Else + 
+																		If ##Dyms_GSTApplicability="Not Applicable" Then $$SysName:NotApplicable Else $$SysName:Undefined
+	545		:	Set Value					:	GSTTYPEOFSUPPLY		 :	$$SysName:Goods
+
+;;;;;;;;;;;;; If Applicable date is empty then 0110 error occurse Manualy need to add Applicable date but by default added "01/07/2017";;;;;;;;;;;;
+	0800	:	Set:ApplDateExists: $$IsEmpty:$(StockItem, ##Dyms_ServiceItemName).GSTDetails[1].ApplicableFrom
+	0100	: 		If	:  Not ##Dyms_ItemExists and Not ##ApplDateExists
+	0110	:			Delete Collection Object	: GSTDetails 
+	0120	:			Insert Collection Object	: GSTDetails
+	0130	: 		Else
+	0140	:			Insert Collection Object	: GSTDetails
+	0150	: 		End If
+	
+	0170 	: 			Set Value	: ApplicableFrom			: $$Date:(If $$IsEmpty:##Dyms_APPLICABLEDATE Then $$Date:"01/04/2023" Else ##Dyms_APPLICABLEDATE)
+;	0180 	:           Set Value	: HSN						: ##HSNName		
+    0190 	:           Set Value	: HSNCode					: ##Dyms_HSNCODE
+	0200 	: 			Set Value	: Taxability				: ##Dyms_GSTTaxability
+	0210	: 			Set Value	: IsReverseChargeApplicable	: "No"
+	
+	250		:			Insert Collection Object	: StateWiseDetails
+	260		: 				Set Value	: StateName	: $$SysName:Any
+;;;;;;;;;;;;;;; SGST
+	2100	: If	: $$IsEmpty:$RateDetails[1, @@IsCGST].GSTRateDutyHead
+	2110	:	Insert Collection Object	: RateDetails
+	2115	:		Set Value	: GSTRateDutyHead		: $$SysName:CGST
+	2120	: Else
+	2125	:	Set Target	: RateDetails[1, @@IsCGST].
+	2130	: End If
+	2135	:	Set Value	: GSTRate				: ##Dyms_CGSTPERC
+	2140	:	Set Value	: GSTRateValuationType	: $$SysName:OnValue
+    2145 	:   Set Target	: ..
+;;;;;;;;;;;;;;; SGST
+	2200	: If	: $$IsEmpty:$RateDetails[1, @@IsSGSTUTDutyHead].GSTRateDutyHead
+	2210	:	Insert Collection Object	: RateDetails
+	2215	: Else
+	2220	:	Set Target	: RateDetails[1, @@IsSGSTUTDutyHead].
+	2225	: End If
+    2230	:	Set Value	: GSTRateDutyHead		: @@SGSTUTRateDutyHeadExcp
+	2235	:	Set Value	: GSTRate				: ##Dyms_SGSTPERC
+	2240	:	Set Value	: GSTRateValuationType	: $$SysName:OnValue
+    2245 	:   Set Target	: ..
+;;;;;;;;;;;;;;; IGST 	
+	2300	: If	: $$IsEmpty:$RateDetails[1, @@IsIGST].GSTRateDutyHead
+	2310	:	Insert Collection Object	: RateDetails
+	2315	:		Set Value	: GSTRateDutyHead		: $$SysName:IGST
+	2320	: Else
+	2325	:	Set Target	: RateDetails[1, @@IsIGST].
+	2330	: End If
+	2335	:	Set Value	: GSTRate				: ##Dyms_IGSTPERC
+	2340	:	Set Value	: GSTRateValuationType	: $$SysName:OnValue
+    2345 	:   Set Target	: ..
+;;;;;;;;;;;;;;; CESS 	
+	23003	: If	: $$IsEmpty:$RateDetails[1, @@IsCESS].GSTRateDutyHead
+	23103	:	Insert Collection Object	: RateDetails
+	23153	:		Set Value	: GSTRateDutyHead		: $$SysName:CESS
+	23203	: Else
+	23253	:	Set Target	: RateDetails[1, @@IsCESS].
+	23303	: End If
+	23353	:	Set Value	: GSTRate				: ##Dyms_CESSPERC
+	23403	:	Set Value	: GSTRateValuationType	: $$SysName:OnValue
+    23453	:   Set Target	: ..
+	0300	:	Set Target	: ..
+	
+	600		:If : Not ($$IsEmpty:$$TgtObject:$MRPDetails[1, @@RBVATNonEmptyMRPDetailsFromDate].FromDate)
+	602		:									Delete Collection Object    : MRPDetails ;: 1
+    605		:                                   Insert Collection Object    : MRPDetails 
+	610e	: 						 Set Value	: Fromdate		: ($$Date:##Dyms_APPLICABLEDATE)
+	612e	: 				         Insert Collection Object	: MRPRateDetails
+	615e	: 					     Set Value	: StateName		: $$SysName:Any 
+	618e	: 					     Set Value	: MRPRate		: $$TgtObject:$$AsRate:##Dyms_SERVICEMRP
+	620e	:	 			         Set Target	: ..
+	623e	:	 		             Set Target	: ..
+	607		:					 Else
+	609		:									Insert Collection Object	: MRPDetails 
+	610		: 						 Set Value	: Fromdate		: ($$Date:##Dyms_APPLICABLEDATE)                                                            
+	612		: 				         Insert Collection Object	: MRPRateDetails
+	615		: 					     Set Value	: StateName		: $$SysName:Any 
+	618		: 					     Set Value	: MRPRate		: $$TgtObject:$$AsRate:##Dyms_SERVICEMRP
+	620		:	 			         Set Target	: ..
+	623		:	 		             Set Target	: ..
+	625		: End If
+	633		:  Set Target	:..
+	1000    :  Save Target
+
+;;;;;;;;;;;;; Log File ;;;;;;;;;;;;;;;;;;;;
+	1060 : IF:not $$LastResult
+	5004 :   Set File Log On
+	5005 :   OPEN FILE :@@FSMProductLogfilepatch:Text:Write 
+	5010 :	 Write File Line	: $$String:($$LastError)
+	5020 :	 Write File Line	: $$String:"Error from :"+$$String:##Dyms_ServiceItemName
+	5030 :	 Set File Log Off
+	5040 :	 Close Target File
+	1040 : 	Increment: Errorcount
+	1188 : End If
+	1020 : End Walk
+	1200 : End Walk
+ 
+	;;;;;;;;;;;;;;;; Error Message ;;;;;;;;;;;;;;;;
+	LocalFormula:	DateTimeFolderNN	:	$$LocaleString:($$YearOfDate:$$MachineDate)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$MonthOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$DayOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$StringFindAndReplace:($$MachineTime):":":"-")
+	9191 : If: ##Errorcount = 0
+	1201 : 	Copy File		: @@FSMProductfileArchpatch+ "\" + @DateTimeFolderNN + "\"	:   ##Dyms_LocalFileNames
+	1202 :	Delete File:##Dyms_LocalFileNames
+	1201F: 	Copy File		: @@RetailerProductDownloadArch+"/"+@DateTimeFolderNN+"/"	:   @@RetailerProdctDownloadFTP+"/"+$Name
+	1205F: 	Delete File:   @@RetailerProdctDownloadFTP+"/"+$Name
+	1210 :	Log: "Status : Process Completed! Stock Items Imported Successfully!! "
+	1205 : Else
+	1219 :	Log: "Status : Error While Importing!! Please Refer Log File  " +$$LocaleString:@@FSMProductLogfilepatch
+	1040a: Decrement: Errorcount
+	1220 : End If
+	
+ 	1288 : End Progress
+	1330 : End Batch Post
+	1331 : Else
+	1400 : End If
+	1410 : End Walk
+	
+	12780 : Else
+	12790 : Log	:"No Data File In Product Folder"
+	12800 : 	End If
+	12810 : Else
+	12820 : Msg Box	:	"Warning !":"Check Internet Availability!!"
+	12830 : 	End If
+	12835 : Return
+	
+
+[System:Formulae]
+	
+	Dyms_ProductFilter			: $PRODUCTNAME=##Dyms_ServiceItemName	
+	RetailerProdctDownloadFTP	: $$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@FSMProductFolder
+	RetailerProductDownloadArch : $$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@FSMProductFolderArc
+	FSMProductfilepatch			: @@FSMDatapath + "\" + @@FSMProductFolder
+	FSMProductFolder         	: $FTPProductDownload:Company:##SVCurrentCompany
+	FSMProductLogfilepatch		: @@FSMProductfilepatch + "\StockItemLog.txt"
+	FSMProductfileArchpatch		: @@FSMDatapath + "\" + @@FSMProductFolderArc
+	FSMProductFolderArc       	: @@FSMProductFolder + "/archive" 
+	

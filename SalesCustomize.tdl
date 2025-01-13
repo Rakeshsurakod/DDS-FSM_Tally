@@ -1,0 +1,121 @@
+
+[#Part: DBLLINE Narration]
+	
+	Option	: DBlLine Narration Payemnt :  @@issales 
+
+[!Part:DBlLine Narration Payemnt] 
+
+	Add : Line: Before : VCH NarrPrompt:VCH SalesPaymentIn,VCH SalesPaymentIn2
+
+	[Line: VCH SalesPaymentIn2]
+		Field	: VCH SalesPaymentPartyTitle,VCH SalesPaymentPartyVal,VCH SalesPaymentAmtTitle,VCH SalesPaymentAmtVal,VCH SalesQRCode
+		Local	: Field	: VCH SalesPaymentPartyTitle : Set as : "Payment Party : "
+		Local	: Field	: VCH SalesPaymentPartyTitle : Width	:	15
+		Local	: Field	: VCH SalesPaymentPartyVal : Width	:	25
+		Local	: Field	: VCH SalesPaymentAmtTitle : Set as : "Payment Amount : "
+		Local	: Field	: VCH SalesPaymentAmtTitle : Width	:	15
+		Local	: Field	: VCH SalesPaymentAmtVal : Width	:	25
+		Local	: Field	: VCH SalesQRCode : Width	:	25
+
+	[Line: VCH SalesPaymentIn]
+		
+		Field	: Medium Prompt, VCH SalesPaymentType,VCH SalesPaymentIdTitle,VCH SalesPaymentIDVal
+		Local	: Field	: Medium Prompt : Set as : "Payment Type : "
+		Local	: Field	: Medium Prompt : Width	:	15
+		Local	: Field	: VCH SalesPaymentType : Width	:	25
+		Local	: Field	: VCH SalesPaymentIdTitle : Set as : "Payment ID : "
+		Local	: Field	: VCH SalesPaymentIdTitle : Width	:	15
+		Local	: Field	: VCH SalesPaymentIDVal : Width	:	25
+		
+		[Field: VCH SalesPaymentType]
+		
+			Use			: Name Field
+			Storage 	: PrintSalesPaymentType
+			
+		[Field: VCH SalesPaymentIdTitle]
+		
+			Use			: Medium Prompt
+		[Field: VCH SalesPaymentIDVal]
+		
+			Use			: Name Field
+			Storage 	: PrintSalesPaymentID
+
+		[Field: VCH SalesPaymentPartyTitle]
+		
+			Use			: Medium Prompt
+		[Field: VCH SalesPaymentPartyVal]
+		
+			Use			: Name Field
+			Storage 	: PrintSalesPaymentParty
+		[Field: VCH SalesPaymentAmtTitle]
+		
+			Use			: Medium Prompt
+		[Field: VCH SalesPaymentAmtVal]
+		
+			Use			: Name Field
+			Storage 	: PrintSalesPaymentAmt
+			
+		[Field:VCH SalesQRCode]
+			Use			: Narration Field
+			Storage 	: VCHSalesQRCodeSt
+			Invisible	: Yes
+			Set Always	: Yes
+			
+
+
+;;;;;;;;;;;;;;;;;;;;;; SAles REgister
+[#Line: DSP ColVchDetail];;ggggg
+Option	:	DSP ColVchDetailParty
+
+[!Line:DSP ColVchDetailParty]	
+
+
+	Add	:	Field	:	Before	:	DBC VchType	: DBC PartPartPaymentType,DBC PartPartPaymentID,DBC PartPartPaymentParty,DBC PartPartPaymentAmt
+	
+
+[#Line: DSP ColVchTitle]
+
+    Use             : DSP ColVchDetail
+	Local           : Field : DBC PartPartPaymentType	: Set as 	: $$LocaleString:"Payment Type"
+	Local           : Field : DBC PartPartPaymentID		: Set as 	: $$LocaleString:"Payment ID"
+	Local           : Field : DBC PartPartPaymentParty	: Set as 	: $$LocaleString:"Payment Party"
+	Local           : Field : DBC PartPartPaymentAmt	: Set as 	: $$LocaleString:"Payment Amount"
+		
+
+[#Collection: SRC Specific Vouchers of Company]
+	Fetch	:	PrintSalesPaymentType,PrintSalesPaymentID,PrintSalesPaymentParty,PrintSalesPaymentAmt 
+[#Collection: Columnar Filtered Vouchers of Company]
+	Fetch	:	PrintSalesPaymentType,PrintSalesPaymentID,PrintSalesPaymentParty,PrintSalesPaymentAmt 
+;		Compute	:	PRDTypeSalesClmr	:	$IsProductType
+[#Collection: Columnar Vouchers of Company]
+	Fetch	:	PrintSalesPaymentType,PrintSalesPaymentID,PrintSalesPaymentParty,PrintSalesPaymentAmt 
+;		Compute	:	PRDTypeSalesClmr	:	$IsProductType
+	[#Collection: Columnar Specific Vouchers of Company]
+	Fetch	:	PrintSalesPaymentType,PrintSalesPaymentID,PrintSalesPaymentParty,PrintSalesPaymentAmt 
+;		Compute	:	PRDTypeSalesClmr	:	$IsProductType
+
+
+            [Field: DBC PartPartPaymentType]
+                Set as  : $PrintSalesPaymentType
+                Style   : Small Italic
+                Align   : Right
+				Border : Thin left
+				
+            [Field: DBC PartPartPaymentID]
+                Set as  : $PrintSalesPaymentID
+                Style   : Small Italic
+                Align   : Right
+				Border : Thin left
+				
+            [Field: DBC PartPartPaymentParty]
+                Set as  : $PrintSalesPaymentParty
+                Style   : Small Italic
+                Align   : Right
+				Border : Thin left
+				
+            [Field: DBC PartPartPaymentAmt]
+                Set as  : $PrintSalesPaymentAmt
+                Style   : Small Italic
+                Align   : Right
+				Border : Thin left
+				

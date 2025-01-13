@@ -1,0 +1,1184 @@
+ 
+[Include	:	DynaReceipt.txt]
+;[Include	:	CustomerExcelImport.txt]
+[Include	:	CustomerJsonImport.txt]
+[Include	:	SalesJsonImport.txt]
+[Include	:	ProductUpload.txt]
+[Include	:	FTPSettings.tdl]
+[Include	:	StatusChangeFunction.tdl]
+[Include	:	SalesCustomize.tdl]
+[Include	: 	e-invoice e-waybill.txt]
+[Include	:   ProductDownload.txt]
+[Include	:   SupplierDownload.txt]
+[Include	:	InventoryDownload.txt]
+[Include	:	PurchaseDownload.txt]
+
+[#Menu: Gateway of Tally]
+
+Option			: Optional Batteries Menu : 
+
+[!Menu:Optional Batteries Menu]
+	
+	Add:Key Item : Before: @@locQuit : FTP Data Exchange :F:Menu:GLDailyImportMenu
+	Add:Key Item : BLANK
+
+
+[Menu:GLMasterReport]
+	Title	:	"Tally Admin Menu"
+	Key Item 		:  "Tally Admin Config"		: A : Menu				: TallyAdminMenu
+	Item			: BLANK
+	Key Item 		:  "Export Report"			: E : Menu				: GLExcelImportMenu
+	Item			:BLANK
+	Key Item		: "Stock Itme Flag Status"	: S : Alter      		: ChangeStatusWithSelectedPeriod		 
+	Item        	: BLANK 
+	Key Item		: "Ledger Group Flag Status": L : Alter      		: ChangeStatusLedgergroup		 
+	Item        	: BLANK 	
+	
+[Menu:GLExcelImportMenu]
+	Title	:	"Excel Export Menu"
+	Key Item    	: "Customer Export"      	: E : Display    		: Dyms_LedgerReport
+	Item			:BLANK
+	Key Item    	: "Product Export"      	: P : Display    		: Dyms_ProducrReport
+	Item			:BLANK
+	Key Item    	: "Product Inv Export"      : P : Display    		: Dyms_ProductInvReport
+	
+[Menu:GLDailyImportMenu]
+	Title	:	"FTP Data Exchange"
+	Key Item		: FTP Configuration 		: F : Alter      		: FTPFoldersConfig		 
+	Item        	: BLANK 
+	Key Item 		:  Tally Inbound			: I : Menu				: TallyInbound
+	Item			: BLANK
+	Key Item 		:  Tally Outbound			: O : Menu				: TallyOutbound
+	Item			: BLANK
+	Key Item 		: "Tally Admin Menu"		: D : Menu 				: GLMasterReport	:	##TallyAdminMenu
+	Key Item 		: BLANK	
+	
+[Menu:TallyInbound]
+	
+	Title	:	"Tally Inbound Jobs"
+	Key Item    	: "Product Download"      	: P : Call    		: Dyms_ProductDownload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK
+	Key Item    	: "Stock Entry Download"    : T : Call    		: Dyms_InventoryDownload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK	
+	Key Item    	: "Customer Download"      	: C : Call    		: Dyms_CustomeDownload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK
+	Key Item    	: "Supplier Download"      	: U : Call    		: Dyms_SupplierDownload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK
+	Key Item    	: "Sales Download"      	: S : Call    		: Dyms_SalesDownload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK
+	Key Item    	: "Purchase Download"		: R : Call    		: Dyms_PurchaseDownload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK	
+	Key Item    	: "Receipt or Payment Download"	: E : Call    	: FN_FSM_CreateReceipt:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK	
+	
+[Menu:TallyOutbound]
+	
+	Title	:	"Tally Outbound Jobs"
+
+	Key Item    	: "Product Upload"      		: P : Call    		: Dyms_ProductUploadNew:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK
+	Key Item    	: "Stock Entry Upload"      	: T : Call    		: Dyms_StockJrnlProductUpload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK	
+	Key Item    	: "Customer Upload"      		: C : Call    		: Dyms_CustomerUpload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK	
+	Key Item    	: "Supplier Upload"      		: S : Call    		: Dyms_SupplierUpload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK
+;	Key Item    	: "Supplier Mandatory Value Check"  : M : Call    	: SupplierMandatoryChk:$$SyncTallyKPLManual="Yes"
+;	Item			:BLANK
+	Key Item    	: "Sales Upload"      			: A : Call    		: Dyms_SalesUpload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK
+	Key Item    	: "Purchase Upload"      		: U : Call    		: Dyms_PurchaseUpload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK
+	Key Item    	: "Payment and Receipt Upload"  : Y : Call    		: Dyms_RcptPmtUpload:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK
+
+[Menu:TallyAdminMenu]
+	
+	Title	:	"One Time Batch Job"
+	Key Item    	: "Product Opening Qty Upload"        : O : Call    		: Dyms_ProductUpload;:$$SyncTallyKPLManual="Yes"
+	Item			:BLANK		
+;	Key Item    	: "Product Opening Qty Upload (Full)" : F : Call    		: Dyms_InventoryFull;:$$SyncTallyKPLManual="Yes"
+;	Item			:BLANK
+
+;[Function	:	LocalFormula11NN1]
+;	100	:	Msg Box	:	LocalFormula11	:	@@LocalFormula12
+;[Function	:	LocalFormula11NN]
+;	100	:	Msg Box	:	LocalFormula11	:	@@LocalFormula11
+;[System: Formulae]
+;LocalFormula12:	$$LocaleString:($$YearOfDate:$$MachineDate)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$MonthOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$DayOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$StringFindAndReplace:($$MachineTime):":":"-")
+;LocalFormula11:	$$StringFindAndReplace:($$MachineTime):":":"-";+"-"+$$StringFindAndReplace:($$MachineDate):"/":"-"+"-"
+
+[System: Event]
+
+	AutoUpload : Load Company:Yes	: CALL	: AutoUploadTimeFun
+	
+	AutoKPLDownloadUpload : Timer : ($$SyncTallyKPLAuto="Yes") : CALL	: AutoUploadDownloadFun
+	
+[Function: AutoUploadTimeFun]
+	010	: Start Timer: AutoKPLDownloadUpload: 61
+	
+[Function: AutoUploadDownloadFun]
+	
+	Variable	: counter1	: Date
+	variable	: CurrentTime,Attention,AutoSyncJob:String	
+	Variable	: CTTimeGivenHM		: String	: $$SyncTallyKPLAuto1
+
+	10	: Set   : CurrentTime : $$Time:$$SysInfo:SystemTime
+	12	: Set 	: AutoSyncJob : $AutoSyncJob:Company:##SvcurrentCompany
+	;20	: Set	: Attention : "Something Went Wrong at  " + ##AutoSyncJob +" Job \n Or All the Jobs are not Run \nPlease Contact Support Team!"
+	;11:	Set	: CurrentTimeHM	:($$StringPart:##CurrentTime:0:2)+($$StringPart:##CurrentTime:3:2)
+	30	: Set : counter1 : $AutoSyncDate:Company:##SvcurrentCompany
+	22	: if  : ##CurrentTime=##CTTimeGivenHM ;and not ##counter1=$$SysInfo:SystemDate
+	051 : Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncDate.AutoSyncDate : $$SysInfo:SystemDate
+	101	:	Call	:	Dyms_CustomeDownload
+	202	:	Call	:	Dyms_SalesDownload
+	404	:	Call	:	Dyms_ProductUploadNew
+	303	:	Call	:	Dyms_ProductUpload
+	501	:	End If
+	201	: if  : ##CurrentTime<##CTTimeGivenHM and not ##counter1=$$SysInfo:SystemDate
+	050 : Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncDate.AutoSyncDate : $$SysInfo:SystemDate
+	100	:	Call	:	Dyms_CustomeDownload
+	200	:	Call	:	Dyms_SalesDownload
+	400	:	Call	:	Dyms_ProductUploadNew
+	300	:	Call	:	Dyms_ProductUpload
+	500	:	End If
+	600	: If	: not ##AutoSyncJob = "Inventory" and ##control = Yes
+;	601 : msg Box: "Attention" : ##Attention
+	597	: Set   :  control: No
+	;599	: Log	: ##Control
+	602	: End If
+
+[System:Variable]
+	control : Yes
+	
+[Variable:control]
+	Type	: Logical
+	
+;;;;;;;;;;;;;;;;;;;;;;;;; Customer Report ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+[Report:Dyms_LedgerReport]
+
+	Form 				:	 Dyms_LedgerReport
+	Title 				: 	 $$LocaleString:"Customer Master Report"
+ 	PrintSet			: 	ReportTitle		: $$LocaleString:"Customer Master Template"
+	PrintSet			: 	PrintFileName   : $$LocaleString:"Customer Master Import"
+
+
+[Form: Dyms_LedgerReport]
+	
+	Height              : 	100% page 
+	Width               : 	100% Page
+	Part 			    : 	Dyms_LedgerTitlePart
+	Button				:   PrintButton,Export Button
+
+
+[Part:Dyms_LedgerTitlePart]
+	
+
+Line	:Dyms_LedgerTitles,Dyms_LedgerValues
+Repeat	:Dyms_LedgerValues:DymsLedgerDetailsCollection
+Scroll	:Both
+Common Border:Yes
+Border	:Thin Box
+
+
+[Collection	:DymsLedgerDetailsCollection]
+	
+Type	:Ledger
+Fetch	:Name,Parent,GSTRegistrationType
+Belongs To:Yes
+Filter	:custSupl
+
+[System:Formula]
+	custSupl	:	$Parent="Sundry Creditors" or $Parent="Sundry Debtors"
+
+[Line	:Dyms_LedgerTitles]
+	
+
+Fields	:Dyms_LedgerName,Dyms_MailingLedgerName,Dyms_LedgerGrpName,Dyms_LedgerCreditDaysName,Dyms_LedgerCreditLimitName,+
+Dyms_LedgerAddress1Name,Dyms_LedgerAddress2Name,Dyms_LedgerAddress3Name,Dyms_LedgerPincodeName,Dyms_LedgerStateName,Dyms_LedgerCountryName,Dyms_LedgerContactPersonName,+
+Dyms_LedgerMobileNoName,Dyms_LedgerLandlineNoName,Dyms_LedgerFaxNoName,Dyms_LedgerCCName,Dyms_LedgerWebsiteName,Dyms_LedgerGSTTypeName,Dyms_LedgerGstNoName,Dyms_LedgerPanNo
+Border	:Full Thin Bottom
+
+[Field	:Dyms_LedgerName]
+	
+	Set as     		   : " Customer Name"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_MailingLedgerName]
+	
+	Set as     		   : " Mailing Name"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerGrpName]
+	
+	Set as     		   : "Group Name"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerCreditDaysName]
+	
+	Set as     		   : "Credit Days"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_LedgerCreditLimitName]
+	
+	Set as     		   : "Credit Limit"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+
+[Field	:Dyms_LedgerAddress1Name]
+	
+	Set as     		   : "Address1"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_LedgerAddress2Name]
+	
+	Set as     		   : "Address 2"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerAddress3Name]
+	
+	Set as     		   : "Address 3"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+
+[Field	:Dyms_LedgerPincodeName]
+	
+	Set as     		   : "Pincode "
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+
+[Field	:Dyms_LedgerStateName]
+	
+	Set as     		   : "State "
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerCountryName]
+	
+	Set as     		   : "Country "
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerMobileNoName]
+	
+	Set as     		   : "Mobile No "
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerLandlineNoName]
+	
+	Set as     		   : "Landline No "
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_LedgerFaxNoName]
+	
+	Set as     		   : "Fax No "
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+[Field	:Dyms_LedgerContactPersonName]
+	
+	Set as     		   : "Contact Person"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+	
+[Field	:Dyms_LedgerPanNo]
+	
+	Set as     		   : "Pan No"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+;	Border             : Thin Right
+	
+[Field	:Dyms_LedgerEmailName]
+	
+	Set as     		   : "Email"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerCCName]
+	
+	Set as     		   : "CC"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerWebsiteName]
+	
+	Set as     		   : "Website"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerGSTTypeName]
+	
+	Set as     		   : "GST Type"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerGstNoName]
+	
+	Set as     		   : "GstNo"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+ 	Border             : Thin Right
+	
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+[Line	:Dyms_LedgerValues]
+	
+
+Fields	:Dyms_LedgerName1,Dyms_MailingLedgerName1,Dyms_LedgerGrpName1,Dyms_LedgerCreditDaysName1,Dyms_LedgerCreditLimitName1,+
+Dyms_LedgerAddress1Name1,Dyms_LedgerAddress2Name1,Dyms_LedgerAddress3Name1,Dyms_LedgerPincodeName1,Dyms_LedgerStateName1,Dyms_LedgerCountryName1,Dyms_LedgerContactPersonName1,+
+Dyms_LedgerMobileNoName1,Dyms_LedgerLandlineNoName1,Dyms_LedgerFaxNoName1,Dyms_LedgerCCName1,Dyms_LedgerWebsiteName1,Dyms_LedgerGSTTypeName1,Dyms_LedgerGstNoName1,Dyms_LedgerPanNo1
+
+
+[Field	:Dyms_LedgerName1]
+	
+	Set as     		   : $Name
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_MailingLedgerName1]
+	
+	Set as     		   : $Name
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerGrpName1]
+	
+	Set as     		   :  $Parent
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerCreditDaysName1]
+	
+	Set as     		   : $BillCreditPeriod
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_LedgerCreditLimitName1]
+	
+	Set as     		   :  $CreditLimit
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+
+[Field	:Dyms_LedgerAddress1Name1]
+	
+	Set as     		   : $Address[1].Address
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_LedgerAddress2Name1]
+	
+	Set as     		   : $Address[2].Address
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerAddress3Name1]
+	
+	Set as     		   :  $Address[3].Address
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+
+[Field	:Dyms_LedgerPincodeName1]
+	
+	Set as     		   : $Pincode 
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+
+[Field	:Dyms_LedgerStateName1]
+	
+	Set as     		   : $LedStateName
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerCountryName1]
+	
+	Set as     		   : $CountryofResidence
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerMobileNoName1]
+	
+	Set as     		   : $LedgerMobile
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerLandlineNoName1]
+	
+	Set as     		   : $LedgerPhone
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_LedgerFaxNoName1]
+	
+	Set as     		   : $LedgerFax
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerEmailName1]
+	
+	Set as     		   : $Email
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerCCName1]
+	
+	Set as     		   : $EMailCC
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerWebsiteName1]
+	
+	Set as     		   : $Website
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerGSTTypeName1]
+	
+	Set as     		   : $GSTRegistrationType
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_LedgerGstNoName1]
+	
+	Set as     		   : $PartyGSTIN
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+ 	Border             : Thin Right
+
+
+
+[Field	:Dyms_LedgerContactPersonName1]
+	
+	Set as     		   : $LedgerContact
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+	
+	
+[Field	:Dyms_LedgerPanNo1]
+	
+	Set as     		   : $PANNumber
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+;	Border             : Thin Right
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Product Report ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+[Report:Dyms_ProducrReport]
+	
+
+ 
+	Form 				:	 Dyms_ProductReport
+	Title 				: 	 $$LocaleString:"Product Master Report"
+ 	PrintSet			: 	ReportTitle		: $$LocaleString:"Product Master Template"
+	PrintSet			: 	PrintFileName   : $$LocaleString:"Product Master Import"
+
+
+[Form: Dyms_ProductReport]
+	
+	Height              : 	100% page 
+	Width               : 	100% Page
+	Part 			    : 	Dyms_ProductTitlePart
+	Button				:   PrintButton,Export Button
+
+
+[Part:Dyms_ProductTitlePart]
+	
+
+Line	:Dyms_ProductTitles ,Dyms_ProductValues
+ Repeat	:Dyms_ProductValues:DymsSTockITemDetailsCollection
+Scroll	:Both
+Common Border:Yes
+Border	:Thin Box
+
+[Collection	:DymsSTockITemDetailsCollection]
+	
+Type	:STockITem
+Fetch	:Name,Parent
+;Child Of:"Sundry Debtors"
+;Belongs To:Yes
+
+ 
+
+[Line	:Dyms_ProductTitles]
+	
+
+Fields	:Dyms_ProductName,Dyms_ProductAliasName,Dyms_ProductPartName,Dyms_ProductUOMName,Dyms_ProductGroupName,Dyms_ProductGSTApp,Dyms_ProductGSTAppDate,Dyms_ProductGSTDesc,Dyms_ProductGSTHsnCode,Dyms_ProductGSTCalcType,Dyms_ProductGSTTax,Dyms_ProductIGSPerc,Dyms_ProductCGSPerc,Dyms_ProductSGSPerc,Dyms_ProductCessPerc,Dyms_ProductSupplyType
+
+Border	:Full Thin Bottom
+
+
+
+
+[Field	:Dyms_ProductName]
+	
+	Set as     		   : " Product Name"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductAliasName]
+	
+	Set as     		   : " Alias Name"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductPartName]
+	
+	Set as     		   : " Part NO"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_ProductUOMName]
+	
+	Set as     		   : " UOM Name"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_ProductGroupName]
+	
+	Set as     		   : " Group Name"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductGSTApp]
+	
+	Set as     		   : " GST Applicable"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_ProductGSTAppDate]
+	
+	Set as     		   : " GST Applicable Date"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_ProductGSTDesc]
+	
+	Set as     		   : " GST Desc"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+
+
+
+[Field	:Dyms_ProductGSTHsnCode]
+	
+	Set as     		   : " GST HSN "
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+
+
+
+
+[Field	:Dyms_ProductGSTCalcType]
+	
+	Set as     		   : " GST CalcType"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_ProductGSTTax]
+	
+	Set as     		   : " GST Taxability"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductIGSPerc]
+	
+	Set as     		   : "IGST Perc"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductCGSPerc]
+	
+	Set as     		   : "CGST Perc"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductSGSPerc]
+	
+	Set as     		   : "SGST Perc"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductCessPerc]
+	
+	Set as     		   : "Cess Perc"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductSupplyType]
+	
+	Set as     		   : "Type Of Supply"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+;	Border             : Thin Right
+	
+
+
+
+
+[Line	:Dyms_ProductValues]
+	
+
+Fields	:Dyms_ProductName1,Dyms_ProductAliasName1,Dyms_ProductPartName1,Dyms_ProductUOMName1,+
+Dyms_ProductGroupName1,Dyms_ProductGSTApp1,Dyms_ProductGSTAppDate1,Dyms_ProductGSTDesc1,+
+Dyms_ProductGSTHsnCode1,Dyms_ProductGSTCalcType1,Dyms_ProductGSTTax1,Dyms_ProductIGSPerc1,+
+Dyms_ProductCGSPerc1,Dyms_ProductSGSPerc1,Dyms_ProductCessPerc1,Dyms_ProductSupplyType1
+
+Border	:Full Thin Bottom
+
+
+
+
+[Field	:Dyms_ProductName1]
+	
+	Set as     		   : $Name
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductAliasName1]
+	
+	Set as     		   : $OnlyAlias
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductPartName1]
+	
+	Set as     		   :$PartNo
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_ProductUOMName1]
+	
+	Set as     		   : $BaseUnits
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_ProductGroupName1]
+	
+	Set as     		   :  $Parent
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductGSTApp1]
+	
+	Set as     		   : $GSTApplicable
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+;$GSTDetails[Last].StatewiseDetails[1, @@IsAnyState].RateDetails[1, @@IsIGST].GSTRate
+
+[Field	:Dyms_ProductGSTAppDate1]
+	
+	Set as     		   :$GSTDetails[Last].ApplicableFrom;StatewiseDetails[1, @@IsAnyState].RateDetails[1, @@IsIGST].GSTRate " GST Applicable Date"
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+
+[Field	:Dyms_ProductGSTDesc1]
+	
+	Set as     		   : $GSTDetails[Last].HSN;
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+
+
+
+[Field	:Dyms_ProductGSTHsnCode1]
+	
+	Set as     		   :  $GSTDetails[Last].HSNCode;
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+
+
+
+
+[Field	:Dyms_ProductGSTCalcType1]
+	
+	Set as     		   : $GSTDetails[Last].CalculationType
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+		
+[Field	:Dyms_ProductGSTTax1]
+	
+	Set as     		   :$GSTDetails[Last].Taxability
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductIGSPerc1]
+	
+	Set as     		   : $GSTDetails[Last].StatewiseDetails[1, @@IsAnyState].RateDetails[1, @@IsIGST].GSTRate
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductCGSPerc1]
+	
+	Set as     		   : $GSTDetails[Last].StatewiseDetails[1, @@IsAnyState].RateDetails[1, @@IsCGST].GSTRate
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductSGSPerc1]
+	
+	Set as     		   :$GSTDetails[Last].StatewiseDetails[1, @@IsAnyState].RateDetails[1, @@IsSGST].GSTRate
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductCessPerc1]
+	
+	Set as     		   : $GSTDetails[Last].StatewiseDetails[1, @@IsAnyState].RateDetails[1, @@IsAddlCess].GSTRate
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+	Border             : Thin Right
+	
+
+[Field	:Dyms_ProductSupplyType1]
+	
+	Set as     		   : $GSTTypeofSupply
+	Align              : Center	
+	Skip     		   : Yes
+	Style      		   : Normal Bold 
+	Full Width:Yes
+;	Border             : Thin Right
+
+
+;;;;;;;;;;;;;;;;;;;;;Product Inventory Report ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+[Report:Dyms_ProductInvReport]
+	
+Form	:Dyms_ProductInvReport
+
+[Form	:Dyms_ProductInvReport]
+	
+Width	:100% page
+Height	:100% page
+Parts	:Dyms_ProductInvDetails
+Use		:DSPTemplate
+
+[Part	:Dyms_ProductInvDetails]
+	
+Line	:Dyms_ProductInvDetails,Dyms_ProductInvValueDetails
+Repeat	:Dyms_ProductInvValueDetails:DymsSTockITemDetailsSrcCollections
+Scroll	:Both
+Common Border:Yes
+Border	:Thin Box
+
+[Line	:Dyms_ProductInvDetails]
+	
+
+Fields	:Dyms_ProductNames,Dyms_ProductOpenQty,Dyms_ProductOpenQty,Dyms_ProductOpenRate,Dyms_ProductOpenAmt,+
+Dyms_ProductGdwnName,Dyms_ProductGdwnQty,Dyms_ProductGdwnRate,Dyms_ProductGdwnAmt
+Border	:Thin Box
+
+
+Local	:Field	:Dyms_ProductNames:Set as:"Product Name"
+Local	:Field	:Dyms_ProductOpenQty:Set as:"Opening Qty"
+Local	:Field	:Dyms_ProductOpenRate:Set as:"Opening Rate"
+Local	:Field	:Dyms_ProductOpenAmt:Set as:"Opening Amt"
+
+
+
+Local	:Field	:Dyms_ProductGdwnName:Set as:"Godown Name"
+Local	:Field	:Dyms_ProductGdwnQty:Set as:"Godown Qty"
+Local	:Field	:Dyms_ProductGdwnRate:Set as:"Godown Rate"
+Local	:Field	:Dyms_ProductGdwnAmt:Set as:"Godown Amt"
+
+[Line	:Dyms_ProductInvValueDetails]
+	
+
+Fields	:Dyms_ProductNames,Dyms_ProductOpenQty,Dyms_ProductOpenQty,Dyms_ProductOpenRate,Dyms_ProductOpenAmt,+
+Dyms_ProductGdwnName,Dyms_ProductGdwnQty,Dyms_ProductGdwnRate,Dyms_ProductGdwnAmt
+
+
+
+
+[Field	:Dyms_ProductNames]
+	
+Use		:Name Field
+Set as	:$ProductName
+Full Width:Yes
+Border	:ThinRight
+
+[Field	:Dyms_ProductOpenQty]
+	
+
+Use		:Name Field
+Set as	:$$String:$openingqty
+Full Width:Yes
+Border	:ThinRight
+Format	:"No Symbol"
+[Field	:Dyms_ProductOpenRate]
+	
+Use		:Name Field
+Set as	:$OpeningRate
+Full Width:Yes
+Border	:ThinRight
+[Field	:Dyms_ProductOpenAmt]
+	
+Use		:Name Field
+Set as	:$OpeningValue
+Full Width:Yes
+Border	:ThinRight
+[Field	:Dyms_ProductGdwnName]
+	
+Use		:Name Field
+Set as	:$StockItemGodownName
+Full Width:Yes
+Border	:ThinRight
+[Field	:Dyms_ProductGdwnQty]
+	
+
+Use		:Name Field
+Set as	:$StockItemGodownQty
+Full Width:Yes
+ Border	:ThinRight
+
+[Field	:Dyms_ProductGdwnRate]
+Use		:Name Field
+Set as	:$StockItemGodownRate
+Full Width:Yes	
+
+ Border	:ThinRight
+
+[Field	:Dyms_ProductGdwnAmt]
+	Use		:Name Field
+Set as	:$StockItemGodownAmt
+Full Width:Yes	
+
+
+
+
+[Collection	:DymsSTockITemDetailsSrcCollection]
+	
+Type	:STockITem
+Fetch	:Name,Parent
+;Child Of:"Sundry Debtors"
+;Belongs To:Yes
+
+
+[Collection	:DymsSTockITemDetailsSrcCollections]
+	
+Source Collection	:DymsSTockITemDetailsSrcCollection
+
+;Walk	:BatchAllocations
+Compute	:ProductName:$..Name
+Compute:openingqty:$OpeningBalance
+Compute:openingrate:$openingrate
+Compute:openingvalue:$openingvalue
+
+  Walk:Batch Allocations
+ Compute	:StockItemGodownName:$GodownName
+ Compute	:StockItemGodownQty:$OpeningBalance
+ Compute	:StockItemGodownRate:$openingrate
+ Compute	:StockItemGodownAmt:$openingvalue
+
+
+

@@ -1,0 +1,750 @@
+;;;;;;;;;; Jai Shree Ram  ;;;;;;;;;;;;
+
+[Collection: Dyms_FTPDirectoryCollRecptPmt]
+	
+	Data Source : Directory	: @@RetailerDownloadFTPRcptPmt     
+	Filter		: Dyms_FilterFiles
+	Format		: $Name, 25
+	Title       : "File Listing"
+	Sub Title	: "File Name", "File Size", "Read Only"
+	
+[Collection: Dyms_LocalDirectoryRcptPmtColl]
+	
+	Data Source : Directory	: @@FSMRcptPmtfilepatch     
+	Filter		: Dyms_FilterFiles
+	Format		: $Name, 25
+	Title       : "File Listing"
+	Sub Title	: "File Name", "File Size", "Read Only"
+	
+[Collection:DymsJsonRcptPmtCollections1]
+		
+		Data Source			: File JSON		:##Dyms_LocalFileNames
+   	  	JSON Object Path	: "PAYMENT:1"
+
+;select $VOUCHERNUMBER from DymsJsonRcptPmtCollections1
+[Collection:DymsJsonRcptPmtCollections]
+	
+	Source Collection:DymsJsonRcptPmtCollections1
+	compute	:	Dyms_VoucherVoucherNumberInv:	$VOUCHERNUMBER
+	compute	:	Dyms_VoucherDateInv			:	$DATE
+	Compute	:	Dyms_AGAINSTREFERENCENO		:	$AGAINSTREFERENCENO
+	Compute	:	Dyms_PAYMENTTYPESTATUS		:	$PAYMENTTYPESTATUS
+	Compute	:	Dyms_PARTYLEDGERNAME		:	$PARTYLEDGERNAME
+	Compute	:	Dyms_COSTCENTER				:	$COSTCENTER
+	Compute	:	Dyms_REMARKNOTE				:	$REMARKNOTE
+	Compute	:	Dyms_PAYMENTTYPE			:	$PAYMENTTYPE
+	Compute	:	Dyms_INSTRUMENTNO			:	$INSTRUMENTNO
+	Compute	:	Dyms_PAYMENTAMOUNT			:	$PAYMENTAMOUNT
+	Compute	:	Dyms_OTHEREMARK				:	$OTHEREMARK
+	Compute	:	Dyms_INSTRUMENTDATE			:	$INSTRUMENTDATE
+;	Filter:RcptPmtVchnoFilter
+	
+;select $Dyms_VoucherVoucherNumberInv from DymsJsonRcptPmtCollections
+[System:Formulae]
+	RetailerDownloadFTPRcptPmt		: $$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPRcptPmtFolder
+	DymcsFTPRcptPmtFolder		    : $RcptPmtDwnldPath:Company:##SVCurrentCompany
+	FSMRcptPmtfilepatch				: @@FSMDatapath + "\" + @@DymcsFTPRcptPmtFolder
+	RcptPmtVchnoFilter				: $Dyms_VoucherVoucherNumberInv=##Dyms_VoucherNumber
+	Dyms_RcptPmt_File				: @@FSMRcptPmtfilepatch+"\RecptPmtDwnldLog.txt"
+	DownloadlocalRcptPmtArch		: @@FSMRcptPmtfilepatch + "\archive"
+	RetailerDownloadFTPRcptPmtArch	: $$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPRcptPmtFolderArch
+	DymcsFTPRcptPmtFolderArch		: @@DymcsFTPRcptPmtFolder + "/" + "archive"
+	
+
+;;;;;;;;;; Receipt and Payment Creation ;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+[Function: FN_FSM_CreateReceipt]
+	Variable: TestVar1 					: Number
+	Variable: DymsLocalHostPathRetailer	:String
+	Variable: DymsLocalHostPathUploadDown: String
+	Variable: Dyms_CountrMsgVAr1		:String
+	Variable: DymsPurchaseCount			:Number
+	
+	Variable: Dyms_VoucherNumber		:String
+	Variable: Dyms_VoucherDate          :String
+	Variable: Dyms_AGAINSTREFERENCENO	:String	
+	Variable: Dyms_PAYMENTTYPESTATUS	:String	
+	Variable: Dyms_PartyNameVar			:String
+	Variable: Dyms_COSTCENTER			:String	
+	Variable: Dyms_REMARKNOTE			:String	
+	Variable: Dyms_PAYMENTTYPE			:String
+	Variable: Dyms_INSTRUMENTNO			:String
+	Variable: Dyms_PAYMENTAMOUNT		:String	
+	Variable: Dyms_OTHEREMARK			:String	
+	Variable: Dyms_INSTRUMENTDATE		:String	
+	Variable: Errcount					:Number: 0 
+	Variable: Dyms_LocalFileNames		:String
+
+	00		: 	Log: "Receipt or Payment Is Running"	
+ 	020 	:	Set			: DymsLocalHostPathRetailer		:	@@FSMRcptPmtfilepatch;
+; 	030 	:	Set			: DymsFTPPathRetailer			:$$IsEmptyCollection:Dyms_FTPDirectoryCollRecptPmt;$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPCustomerFolder
+;	032		:	Msg Box	:	DymsFTPPathRetailer	:	##DymsFTPPathRetailer
+	034		:	If:$$IsInternetActive
+	023  	:   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "Payment"
+	03  	:   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : ""
+	035		:	If:NOT $$IsEmptyCollection:Dyms_FTPDirectoryCollRecptPmt 
+	
+;;;;;;;;;;;;;;;; FTP File Download into local Machine ;;;;;;;;;;;;;;;;;;;;
+	036		:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:Dyms_FTPDirectoryCollRecptPmt 
+	037		:	Start Progress:(##Dyms_CountrMsgVAr1) : "Downloading Json Files From FTP" : "Please Wait" : ""
+ 	040 	:	Walk Collection	:	Dyms_FTPDirectoryCollRecptPmt
+	056		:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Downloading..		"):($Name)
+  	055 	: 	Copy File		: ##DymsLocalHostPathRetailer	:   @@RetailerDownloadFTPRcptPmt+"/"+$Name
+	060		:	End Walk
+	061		:	End Progress
+
+	072		:	Walk Collection:Dyms_LocalDirectoryRcptPmtColl
+	100 	:   Set :	DymsPurchaseCount:$$NumItems:Dyms_LocalDirectoryRcptPmtColl
+	102		:	Set	:	Dyms_LocalFileNames	:	""
+    101 	:	Set	:	Dyms_LocalFileNames	:	@@FSMRcptPmtfilepatch+ "\" +$Name
+
+	105		:    If:##DymsPurchaseCount>0
+	120		:  	Start Batch Post:100
+	121		: 	Set File Log On
+	122		: 	OPEN FILE :@@Dyms_RcptPmt_File:Text:Write 
+	123		:	Write File Line	: "==========================================================================="
+	124		: 	Write File Line	: "Total Receipt or Payment Vouchers to Import - "+$$String:(##DymsPurchaseCount)+" On "+$$String:($$MachineDate)+"-"+$$String:($$MachineTime)
+	125		:	Close Target File
+	126		:	Set File Log Off
+	
+	127		:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:DymsJsonRcptPmtCollections 
+	128		:	Start Progress:(##Dyms_CountrMsgVAr1) : ($$LocaleString:"Importing Receipt and Payments") : "Please wait" : ""
+	130		:	Walk Collection:DymsJsonRcptPmtCollections
+	135		:	Set: Dyms_VoucherNumber				:$Dyms_VoucherVoucherNumberInv
+	136		:	Set: Dyms_VoucherDate				:$Dyms_VoucherDateInv			
+	136a	:	Set: Dyms_AGAINSTREFERENCENO		:$Dyms_AGAINSTREFERENCENO		
+	136b	:	Set: Dyms_PAYMENTTYPESTATUS			:$Dyms_PAYMENTTYPESTATUS		
+	137		:	Set: Dyms_PartyNameVar				:$Dyms_PARTYLEDGERNAME		
+	138		:	Set: Dyms_COSTCENTER				:$Dyms_COSTCENTER				
+	139		:	Set: Dyms_REMARKNOTE				:$Dyms_REMARKNOTE				
+	140		:	Set: Dyms_PAYMENTTYPE				:$Dyms_PAYMENTTYPE			
+	141		:	Set: Dyms_INSTRUMENTNO				:$Dyms_INSTRUMENTNO			
+	142		:	Set: Dyms_PAYMENTAMOUNT				:$Dyms_PAYMENTAMOUNT			
+	143		:	Set: Dyms_OTHEREMARK				:$Dyms_OTHEREMARK				
+	144		:	Set: Dyms_INSTRUMENTDATE			:$Dyms_INSTRUMENTDATE			
+
+	150		:	If:$Dyms_PAYMENTTYPESTATUS="Payable"
+	155		:	Call:PaymentCreate
+	160		:	Else
+	0100	:	New Object	:	Voucher
+	0110	:		Set			:	SVViewName		:	$$SysName:AcctgVchView
+;	120	:		Set			:	SVVoucherType	:	$$VchTypeReceipt
+	0120	:		Set Value	: 	VoucherNumber	: 	##Dyms_VoucherNumber+"R";"123"
+	0130	:		Set Value	:	Date			:	$$Date:##Dyms_VoucherDate;"01.05.2021"
+	0121	:		Set	Value	:	VoucherTypeName	:	"Receipt"
+	0140	:		Set Value	:	IsInvoice		:	No
+	700		: 		Set Value	:	PersistedView	:	##SVViewName
+	0148	:		Set Value	:	Costcentrename	:	$Dyms_COSTCENTER
+	217		:  		Set Value	:   ISCOSTCENTRE	:	Yes
+	0149	:		Set Value	:	Narration		:	$Dyms_REMARKNOTE
+	
+	0141	: 		Set	: TestVar1	: ##Dyms_PAYMENTAMOUNT;If $$IsNegative:$Dyms_PAYMENTAMOUNT then ($$Number:##Dyms_PartyVCHAMOUNTVar + $$Number:$Dyms_PAYMENTAMOUNT*-1) else $Dyms_PAYMENTAMOUNT
+;	0142	: 		Log:##TestVar1 ;+ "My Log"
+	200	:			Insert Collection Object	:	AllLedger Entries
+	210	:				Set Value	:	LedgerName				:	##Dyms_PartyNameVar;"Aanegundi Matta";"ABC"
+	215	:				Set Value	:	IsDeemedPositive		:	No
+	220	:				Set Value	:	IsLastDeemedPositive	:	No
+	225	:				Set Value	:	IsPartyLedger			:	Yes
+	230	:				Set Value	:	Amount					:	$$AsAmount:##TestVar1;1000;$Dyms_PAYMENTAMOUNT;700;(##Dyms_PartyVCHAMOUNTVar +
+	
+;	231	: If: not $$IsNegative:$Dyms_PAYMENTAMOUNT; >= 0
+	1050	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Voucher Importing for.. "):(##Dyms_VoucherNumber)
+	300	:				Insert Collection Object	:	BillAllocations
+	315	:					Set Value	:	Name		:	$Dyms_AGAINSTREFERENCENO;##Dyms_VoucherNumber;"123"
+	310	:					Set Value	:	BillType	:	$$SysName:AgstRef;Advance;NewRef;OnAccount;Agst Ref
+	320	:					Set Value	:	Amount		:	$$AsAmount:$Dyms_PAYMENTAMOUNT;##Dyms_PartyVCHAMOUNTVar;1000
+;	321	: Else
+;	312	:				Insert Collection Object	:	BillAllocations
+;	313	:					Set Value	:	Name		:	##Dyms_VoucherNumber;"123"
+;	314	:					Set Value	:	BillType	:	$$SysName:AgstRef;Advance;NewRef;OnAccount;Agst Ref
+;	316	:					Set Value	:	Amount		:	$$AsAmount:##Dyms_PartyVCHAMOUNTVar;1000;$Dyms_PAYMENTAMOUNT;
+;	;326	: Set Target	:	...
+;	317	:				Insert Collection Object	:	BillAllocations
+;	318	:					Set Value	:	Name		:	##Dyms_VoucherNumber+"R";"123"
+;	319	:					Set Value	:	BillType	:	$$SysName:Advance;NewRef;OnAccount;Agst Ref
+;	322	:					Set Value	:	Amount		:	$$AsAmount:$Dyms_PAYMENTAMOUNT*-1;##Dyms_PartyVCHAMOUNTVar;1000
+;	323	: End If
+	325	: Set Target	:	...
+	
+
+	400	:			Insert Collection Object	:	AllLedger Entries
+	410	:				Set Value	:	LedgerName				:	@@LedgerSelect;$$String:@@DymcsFTPCustomerInvenFolder12;##PrintSalesPaymentParty;"ICICI BANK";"Bank of India";
+	430	:				Set Value	:	Amount					:	$$Negative:$$AsAmount:##TestVar1;1000;$Dyms_PAYMENTAMOUNT;##Dyms_PartyVCHAMOUNTVar;1000 ;* -1
+	415	:				Set Value	:	IsDeemedPositive		:	Yes
+	420	:				Set Value	:	IsLastDeemedPositive	:	Yes
+	425	:				Set Value	:	IsPartyLedger			:	Yes
+	
+	510 : 		INSERT COLLECTION OBJECT : BankAllocations
+	520 : 			SET TARGET : BANKALLOCATIONS
+	530 : 			SET VALUE : Date : $$Date:##Dyms_VoucherDate;"01.05.2021"
+	540 : 			SET VALUE : INSTRUMENTDATE : $$Date:$Dyms_INSTRUMENTDATE;##Dyms_VoucherDate;"01.05.2021"
+	550 : 			SET VALUE : InstrumentNumber : $Dyms_INSTRUMENTNO;PAYMENTID;"9743877756"
+;	551	: 			Set Value : Bank Name		 : ##Dyms_PartyNameVar;$Dyms_PaymentParty
+	560 : 			Set Value : Name : $$MakeUniqueID
+			
+	610 : 	SET VALUE : PAYMENTMODE : $$SysName:Transacted;"Transacted"
+	620 : 	SET VALUE : PaymentFavouring : ##Dyms_PartyNameVar;"Aanegundi Matta";$partyledgername
+	630 : 	SET VALUE : TransactionType : @@PymentTypeselect;$$Sysname:ChequeDD
+;	640 : 	SET VALUE : UniqueReferenceNumber : $VCHChequeno
+;	650 : 	SET VALUE : ChequeCrossComment : $$LocaleString:"A/c Payee"
+	660 : 	SET VALUE : Amount : $$Negative:$$AsAmount:##TestVar1;1000 ;* -1;$VchReceiptInfo2 * -1;$Dyms_PAYMENTAMOUNT;
+;	661	: End Walk
+	670 : Set Target:	..
+	
+;	700	: Set Value	:	PersistedView	:	##SVViewName;$$SysName:AcctgVchView;
+	710	: Create Target
+
+
+	5002	:  If: Not $$LastResult;: Set: result : False
+	5004	:   Set File Log On
+	5005	:   OPEN FILE :@@Dyms_RcptPmt_File:Text:Write 
+	5010	:	Write File Line	: $$String:($$LastError)
+	5020	:	Write File Line	: $$String:"Error from :"+$$String:##Dyms_VoucherNumber
+	5030	:	Set File Log Off
+	5040	:	Close Target File
+	5042	:	Increment: ErrCount
+	720		: End If
+	5044	:  End If
+	5450	:  End Walk
+
+;;;;;;;;;;;;;;;;; Error Message Copy archive and Delete Local file;;;;;;;;;;;;;;;;;;
+	12752	: If	: ##Errcount = 0
+	5460	:	Copy File	:	@@DownloadlocalRcptPmtArch+"\"+@@DateTimeFolderFTP+"\"	:	##Dyms_LocalFileNames
+	5463	:	Delete File:##Dyms_LocalFileNames	
+	5485	:	Set	:	DymsLocalHostPathUploadDown	:	@@RetailerDownloadFTPRcptPmtArch+"/"+@@DateTimeFolderFTP+"/"
+	5490	:	Copy File	:	##DymsLocalHostPathUploadDown	:@@RetailerDownloadFTPRcptPmt+"/"+$Name
+	5493	:	Delete File:@@RetailerDownloadFTPRcptPmt+"/"+$Name
+	12753	:	Log:$$LocaleString:"Status : Process Completed! Purchase Imported Successfully!! "
+	5480	: Else
+	5465	:	Delete File:##DymsLocalHostPathRetailer+"\"+$Name ;;; If There is an error the local file should also delete
+	12757	:	Log:$$LocaleString:"Status : Error While Importing!! Please Refer Log File " +$$LocaleString:@@Dyms_RcptPmt_File
+;	12758	:	Log: ##Dyms_CountrMsgVAr3
+	1040a	: Decrement: ErrCount  ;; If there is a Error then remaining files should not Archive, Because to mentain serial voucher number
+	12760	:	End If
+	
+;;;;;;;;;;; End Progress and End batch Post ;;;;;;;;;;;;;;;;;;;	
+	5455	:	End Progress
+	5470	:	End Batch Post	
+	12700	:	End If
+	12750	:	End Walk
+	
+;;;;;;;;;; No file and No Internet msg	;;;;;;;;;;;;;
+	12780	: Else
+	12790	: Log: "No Data File In Receipt or Payment Folder"
+	12800	:	End If
+	12810	: Else
+	12820	: Msg Box	:	Warning!!	:	"Check Internet Availability!"
+	12830	:	End If
+
+[System:Formulas]
+	LedgerSelect : If $Dyms_PAYMENTTYPE = "CASH" then $Dyms_PAYMENTTYPE else $$String:@@DymcsFTPCustomerInvenFolder12
+	PymentTypeselect : If $Dyms_PAYMENTTYPE contains "Cheque"  then $$SysName:Cheque else If $Dyms_PAYMENTTYPE = "CARD" then $$SysName:CARD else $$SysName:Others;$Dyms_PAYMENTTYPE =  then 
+	
+[Collection:DymsJsonRecptPtmCollections]
+	
+	Source Collection:DymsJsonSalesCollection
+	Walk				:   PAYMENT
+
+	compute				:	Dyms_VoucherVoucherNumberInv	:	$.VOUCHERNUMBER
+	compute				:	Dyms_INSTRUMENTDATE			:	$INSTRUMENTDATE
+	Compute				:	Dyms_RCPTPMTYPE				:	$RCPTPMTYPE
+	Compute				:	Dyms_RCPTVOUCHERTYPE		:	$RCPTVOUCHERTYPE
+	Compute				:	Dyms_PAYMENTTYPE			:	$PAYMENTTYPE
+	Compute				:	Dyms_INSTRUMENTNO			:	$INSTRUMENTNO
+	Compute				:	Dyms_PaymentParty			:	$PAYMENTPARTY
+	Compute				:	Dyms_RefundAmount			:   $REFUNDAMOUNT
+	Compute				:	Dyms_PAYMENTAMOUNT			:	$PAYMENTAMOUNT
+	Filter:SalesInvVchnoFilter
+	
+;;;;;;;;;; Advanced Receipt ;;;;;;;;;;;;;;;;;;
+[Function: FN_FSM_CreateReceipt1]
+	Variable: TestVar : String
+	
+;;;;;;;;; Advance receipt creation ;;;;;;;;;;;
+	131	: Walk Collection	: 	DymsJsonRecptPtmCollections
+;	132	: Start Progress
+;	1050	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Voucher Importing for.."):(##Dyms_VoucherNumber)
+	100	:	New Object	:	Voucher
+	110	:		Set			:	SVViewName		:	$$SysName:AcctgVchView
+;	120	:		Set			:	SVVoucherType	:	$$VchTypeReceipt
+	120	:		Set Value	: 	VoucherNumber	: 	$$String:##Dyms_VoucherVoucherNumberVar + "AR";"123";##TestVar;$VOUCHERNUMBER;
+	130	:		Set Value	:	Date			:	$$Date:##Dyms_VoucherDateVar;$$Date:"01.08.2021";
+	121	:		Set	Value	:	VoucherTypeName	:	##Dyms_VoucherTypeVar1Var;$Dyms_RCPTVOUCHERTYPE;
+	122	:		Set Value	:	Narration		:	##Dyms_JOBREFERENCEID
+	140	:		Set Value	:	IsInvoice		:	No
+	
+	200	:			Insert Collection Object	:	AllLedger Entries
+	210	:				Set Value	:	LedgerName				:	##Dyms_PartyNameVar;"Aanegundi Matta";
+	215	:				Set Value	:	IsDeemedPositive		:	No
+	220	:				Set Value	:	IsLastDeemedPositive	:	No
+	225	:				Set Value	:	IsPartyLedger			:	Yes
+	230	:				Set Value	:	Amount					:	$$AsAmount:$$AsAmount:$Dyms_PAYMENTAMOUNT;1000;
+	
+	300	:				Insert Collection Object	:	BillAllocations
+	315	:					Set Value	:	Name		:	##Dyms_VoucherVoucherNumberVar+ "AR";"123";
+	310	:					Set Value	:	BillType	:	$$SysName:Advance;Agst Ref
+	320	:					Set Value	:	Amount		:	$$AsAmount:$$AsAmount:$Dyms_PAYMENTAMOUNT;1000;
+	325	:					Set Target	:	...
+	
+	400	:			Insert Collection Object	:	AllLedgerEntries
+	410	:				Set Value	:	LedgerName				:	@@LedgerSelect;"Bank of India";
+	430	:				Set Value	:	Amount					:	$$Negative:$$AsAmount:$Dyms_PAYMENTAMOUNT;1000 ;* -1
+	415	:				Set Value	:	IsDeemedPositive		:	Yes
+	420	:				Set Value	:	IsLastDeemedPositive	:	Yes
+	425	:				Set Value	:	IsPartyLedger			:	Yes
+	
+	510 : 		INSERT COLLECTION OBJECT : BankAllocations
+	520 : 			SET TARGET : BANKALLOCATIONS
+	530 : 			SET VALUE : Date : $$Date:##Dyms_VoucherDateVar;"01.05.2021";
+	540 : 			SET VALUE : INSTRUMENTDATE : $$Date:$Dyms_INSTRUMENTDATE;"01.05.2021";
+;	541	: 			Log		: $Dyms_INSTRUMENTDATE
+	550 : 			SET VALUE : InstrumentNumber : $Dyms_INSTRUMENTNO;"9743877756";
+	551	: 			Set Value : Bank Name		 : $Dyms_PaymentParty
+	560 : 			Set Value : Name : $$MakeUniqueID
+			
+	610 : 	SET VALUE : PAYMENTMODE : $$SysName:Transacted;"Transacted"
+	620 : 	SET VALUE : PaymentFavouring : $partyledgername;##Dyms_PartyNameVar;"Aanegundi Matta";
+	630 : 	SET VALUE : TransactionType : @@PymentTypeselect;$$Sysname:ChequeDD
+;	640 : 	SET VALUE : UniqueReferenceNumber : $VCHChequeno
+;	650 : 	SET VALUE : ChequeCrossComment : $$LocaleString:"A/c Payee"
+	660 : 	SET VALUE : Amount : $$Negative:$$AsAmount:$Dyms_PAYMENTAMOUNT;1000 ;* -1;$VchReceiptInfo2 * -1
+	661	: End Walk
+	670 : Set Target:	..
+	700	: Set Value	:	PersistedView	:	##SVViewName;$$SysName:AcctgVchView
+	710	: Create Target
+	;711	: End Progress
+	
+[Collection:DymsJsonAdvancePtmCollections]
+	
+	Source Collection:DymsJsonSalesCollection
+	Walk				:   ADVANCEPAYMENT
+	compute				:	Dyms_VoucherVoucherNumberInv	:	$.VOUCHERNUMBER
+	Compute				:	Dyms_Advancevchno			:	$ADVANCEVCHNO
+	Compute				:	Dyms_AdvanceAmount			:   $ADVANCEAMOUNT
+	Filter:SalesInvVchnoFilter
+	
+;;;;;;;;;;; Payment Creation ;;;;;;;;;;;;
+
+[Function:PaymentCreate]	
+
+;	165	: Walk Collection:DymsJsonRecptPtmCollections
+	170 : NEW OBJECT : VOUCHER
+	180 : SET VALUE : Date 				: ##Dyms_VoucherDate
+	120	: Set Value	: VoucherNumber		: 	$$String:##Dyms_VoucherNumber ;+ "PT"
+	190 : SET VALUE : VoucherTypeName 	: "Payment";$Dyms_RCPTPMTYPE ;"DYMCSPYMT(VASR)"
+	200 : SET 		: SVViewName 		: $$SysName:AcctgVchView
+	205	: Set Value	: Costcentrename	: $Dyms_COSTCENTER
+	207	: Set Value	: ISCOSTCENTRE		:	Yes
+	551 : Set Value : Narration 		: $Dyms_REMARKNOTE
+;	1050f	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Payment Voucher Importing for.. "):(##Dyms_VoucherNumber)
+	210 : INSERT COLLECTION OBJECT : AllLedgerEntries
+	220 : SET VALUE : LedgerName : ##Dyms_PartyNameVar
+	230 : SET VALUE : Amount : -1 * $$AsAmount:##Dyms_PAYMENTAMOUNT
+	240 : SET VALUE : Is Deemed Positive : "Yes"
+
+	250 : INSERT COLLECTION OBJECT : BillAllocations
+	260 : SET VALUE : Name : $$CollectionField:$reference:1:Purchasebill
+	270 : SET VALUE : BillType : $$SysName:AgstRef
+	280 : SET VALUE : Amount : -1 * $$AsAmount:##Dyms_PAYMENTAMOUNT;$Dyms_AdvanceAmount
+;	290 : SET TARGET : ..
+	296 : SET TARGET : ...
+	
+	;300 : If : NOT $$IsSysName:##PayCardLedger
+	;310 : INSERT COLLECTION OBJECT : AllLedgerEntries
+	;320 : SET VALUE : LedgerName : ##PayCardLedger
+	;330 : SET VALUE : Amount : -1 * ##PayCardAmount
+	;340 : SET VALUE : Is Deemed Positive : "No"
+	;350 : SET TARGET : ..
+	;360 : End If
+
+	370 : If : NOT($Dyms_PAYMENTTYPE = "Cash")
+	380 : INSERT COLLECTION OBJECT : AllLedgerEntries
+	390 : SET VALUE : LedgerName : @@DymcsFTPCustomerInvenFolder12
+	400 : SET VALUE : Amount : $$AsAmount:##Dyms_PAYMENTAMOUNT
+	410 : SET VALUE : Is Deemed Positive : No
+	415	: Set Value	: IsPartyLedger		 :	Yes
+	417	: Set Value	: IsLastDeemedPositive : No
+	
+	420 : INSERT COLLECTION OBJECT : BankAllocations
+	425 : SET TARGET : BANKALLOCATIONS
+	430 : SET VALUE : Date : $$Date:##Dyms_VoucherDate
+	463 : Set Value : Name : $$MakeUniqueID
+	465 : SET VALUE : TransactionType : @@PymentTypeselect
+	440 : SET VALUE : InstrumentNumber : $$String:##Dyms_INSTRUMENTNO
+	450 : SET VALUE : InstrumentDate : $$Date:$Dyms_INSTRUMENTDATE
+	460 : SET VALUE : Amount : $$AsAmount:##Dyms_PAYMENTAMOUNT
+	620 : SET VALUE : PaymentFavouring : ##Dyms_PartyNameVar
+
+;	466	: SET VALUE : UniqueReferenceNumber : $$MakeUniqueID
+	467 : SET VALUE : PAYMENTMODE : $$SysName:Transacted
+	470 : SET TARGET :..
+	480 : End If
+	
+	490 : If : ($Dyms_PAYMENTTYPE = "Cash")
+	500 : INSERT COLLECTION OBJECT : AllLedgerEntries
+	510 : SET VALUE : LedgerName : "Cash"
+	520 : SET VALUE : Amount : $$AsAmount:##Dyms_PAYMENTAMOUNT
+
+	530 : SET VALUE : Is Deemed Positive : "No"
+	540 : SET TARGET : ..
+	550 : End If
+
+	560 : SET VALUE : PersistedView : ##SVViewName
+	570 : CREATE TARGET
+	580	: Return
+
+[Collection:Purchasebill]
+	Type	: Vouchers	: VoucherType
+	Child Of: $$VchTypePurchase
+	Belongs To: Yes
+	Fetch	:	VoucherNumber, reference, Masterid
+	Filter	: vchnoref
+	
+;select $vouchernumber, $reference, $masterId from Purchasebill
+
+[System:Formula]
+	vchnoref	:	$VoucherNumber=##Dyms_AGAINSTREFERENCENO
+
+;;;;;;;;;;;;;;; Payment/Receipt Upload ;;;;;;;;;;;;;;;;;;;;
+
+[#Field: ACLSFixedLed]
+	On : Focus : $$InCreateMode	and (@@IsPayment or @@Isreceipt): Call: RcptPmtStatusChangeFunction
+
+[#Line: VCH Type]
+	Option :  RcptPmtStatusLine	: @@IsPayment or @@Isreceipt
+	
+[!Line:RcptPmtStatusLine]
+	Fields: RcptPmtStatusfield
+	
+[Field:RcptPmtStatusfield]
+	
+	Style       : Normal Bold
+	Set as		: $RcptPmtStatusflag
+	Set Always	: Yes
+	Background	: Red
+	Storage		: RcptPmtStatusflag
+;	Invisible	: Yes
+	
+[Function:RcptPmtStatusChangeFunction]
+	
+	10 : Set Object:().
+    20 : Set Target:().
+	30 : Set Value:RcptPmtStatusflag:"1"
+;	40 : Alter Target
+
+[Collection:RcptPmtStatusColl]
+	Collection	:RcptStatusColl
+	Collection	:PmtStatusColl
+	
+
+[Collection:RcptStatusColl]
+	
+	Type		: Vouchers	: VoucherType
+	Child of	: $$VchTypeReceipt
+	Belongs To	: Yes
+	Fetch		: Vouchernumber, RcptPmtStatusflag, Masterid, Narration, Amount, Date,CostcentreName, VoucherTypeOrigName
+	Compute		: Amount1		:	$$String:$Amount:"NoComma"
+	Compute		: Vchtype		:	$Vouchertypename	
+	Compute		: LedNamem		:	$Ledgername
+	Compute		: paymentMethodId:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].TRANSACTIONTYPE then "" else $AllLedgerEntries[2].BankAllocations[1].TRANSACTIONTYPE
+	Compute		: paymentId		:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].INSTRUMENTNUMBER then "" else $AllLedgerEntries[2].BankAllocations[1].INSTRUMENTNUMBER
+	Compute		: paymentDetls	:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].NARRATION then "" else $AllLedgerEntries[2].BankAllocations[1].NARRATION
+	Compute		: Agnstrefpmt	:	$AllLedgerEntries[1].BillAllocations[1].Name
+	Filter		: statuesflagfilterRcptPmt
+
+;select $Vouchernumber, $RcptPmtStatusflag, $Vchtype, $Narration, $LedNamem, $Agnstrefrcpt, $paymentMethodId, $paymentId, $Amount, $CostcentreName, $VoucherTypeOrigName from RcptStatusColl
+
+[Collection:RcptSalesColl]
+	
+	Type				:	Vouchers	: VoucherType
+	Child Of			:	$$VchTypeSales
+	Belongs To			:	Yes
+	Fetch				:	VoucherNumber
+	Compute				:	Amount2			:	$$String:$Amount:"NoComma"
+	Fetch				:   Ledgerentries.BILLALLOCATIONS.*
+	Compute				:	SalsAgnstRef	:	$Ledgerentries[1].BILLALLOCATIONS[1].Name
+	Filter				:	SalesAginsfltr
+
+;select $VoucherNumber, $SalsAgnstRef from RcptSalesColl
+
+[Collection:PmtStatusColl]
+	
+	Type		: Vouchers	: VoucherType
+	Child of	: $$VchTypePayment
+	Belongs To	: Yes
+	Fetch		: Vouchernumber, RcptPmtStatusflag, Masterid, Narration, Amount, Date,CostcentreName, VoucherTypeOrigName
+	Compute		: Amount1		:	$$String:$Amount:"NoComma"
+	Compute		: Vchtype		:	$Vouchertypename	
+	Compute		: LedNamem		:	$Ledgername
+	Compute		: paymentMethodId:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].TRANSACTIONTYPE then "" else $AllLedgerEntries[2].BankAllocations[1].TRANSACTIONTYPE
+	Compute		: paymentId		:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].INSTRUMENTNUMBER then "" else $AllLedgerEntries[2].BankAllocations[1].INSTRUMENTNUMBER
+	Compute		: paymentDetls	:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].NARRATION then "" else $AllLedgerEntries[2].BankAllocations[1].NARRATION
+	Compute		: Agnstrefpmt	:	$AllLedgerEntries[1].BillAllocations[1].Name
+	Filter		: statuesflagfilterRcptPmt
+
+;select $Vouchernumber, $RcptPmtStatusflag, $Vchtype, $Narration, $LedNamem, $Agnstrefrcpt, $paymentMethodId, $paymentId, $Amount, $CostcentreName, $VoucherTypeOrigName from PmtStatusColl
+[Collection:PmtPurcaseColl]
+	
+	Type				:	Vouchers	: VoucherType
+	Child Of			:	$$VchTypePurchase
+	Belongs To			:	Yes
+	Fetch				:	VoucherNumber, reference, Amount, Vouchertypename
+	Compute				:	Amount3		:	$$String:$Amount:"NoComma"
+	Filter				:	filtrpurch
+
+;select $Vouchernumber, $reference from PmtPurcaseColl
+
+[System:Formulae]
+		statuesflagfilterRcptPmt		:	$RcptPmtStatusflag=$$String:"1"
+		filtrpurch						:	$reference=##Find1stStr
+		SalesAginsfltr					:	$VoucherNumber=##Find1stStr
+		Dyms_RcptPtmUpld_File     		: 	@@Dyms_Item_Main+"\payment.json"
+		RetailerDownloadFTPRcptPmtUpld	:	$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPRcptPtmUpload
+		DymcsFTPRcptPtmUpload			:	$RcptPmtUploadPath:Company:##SVCurrentCompany
+		
+[Function:Dyms_RcptPmtUpload]
+	
+	Variable:Roundoff					:	String
+	Variable:MasterId1					:	String
+	Variable:Find1stStr					:	String
+	Variable:Againstref					:	String
+	Variable:DymsLocalHostPathRetailer			: String
+	Variable:salePrice,DymsFTPPathProductCode	:String
+	Variable:Dyms_CountrMsgVAr1			:	Number
+	Variable:DymsFTPPathRetailer		:	String
+
+	000	:	Log: "Receipt and Payment Voucher Upload Running"
+;	002 :	Set			: DymsFTPPathProductCode			:$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPCustomerInvenFolder+"/productinventorys.json"
+	003	:	If:$$IsInternetActive
+;	02  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "Payment"
+;	03  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : "All"
+	060	:	If: not	($$IsFileExists:(@@RetailerDownloadFTPRcptPmtUpld+"/payment.json"))
+	kkl	:	Call: CheckRcptPmtCollection 
+	127	:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:RcptPmtStatusColl
+	004	:	If:##Dyms_CountrMsgVAr1>0
+	
+	004a:	Delete File	:	@@Dyms_RcptPtmUpld_File
+	005	: 	Set File Log On
+	006	: 	OPEN FILE :@@Dyms_RcptPtmUpld_File:Text:Write :ASCII
+	020			: Truncate File
+	040			: Write File Line	: "{"
+	100			: Write File Line	: '"' + "payments" + '"' + ": " + "[" 
+	105	:	Start Progress:(##Dyms_CountrMsgVAr1) : ($$LocaleString:"Upload Receipt or Payment Transactions..") : "Please wait" : ""
+	201	:	Walk Collection:RcptPmtStatusColl
+	204			: Write File Line	: "{"
+	206	:	Set	:	Find1stStr	:	 $Agnstrefpmt
+	Local Formula: InvId		:	If $VchType="Receipt" then $$CollectionField:$VoucherNumber:1:RcptSalesColl else $$CollectionField:$VoucherNumber:1:PmtPurcaseColl
+	210			: Write File Line	: '"' + "invoiceId" + '"' + ": " + '"' +$$StringFindAndReplace:@InvId:'"':'\"' + '"' + ","
+	Local Formula: Recivorpay	:	If $VchType="Receipt" then "Receivable" else "Payable"
+
+	212			: Write File Line	: '"' + "paymentTypeStatus" + '"' + ": " + '"' + $$StringFindAndReplace:@Recivorpay:'"':'\"' + '"' + ","
+	215			: Write File Line	: '"' + "status" + '"' + ": " + '"' + $$String:"PAID":"NoSymbol" + '"' + ","
+	Local Formula:	Paymethodid		: If $paymentMethodId contains "Cheque" then "CHEQUE" else if $$IsEmpty:$paymentMethodId then "CASH" else "ONLINE"
+	220			: Write File Line	: '"' + "paymentMethodId" + '"' + ": " + '"'+ (If $$IsEmpty:$paymentMethodId then "OFFLINE" Else "ONLINE") + '"' + ","
+	223			: Write File Line	: '"' + "paymentModeId" + '"' + ": " + '"'+ $$String:@Paymethodid:"NoSymbol" + '"' + ","
+	224			: Write File Line	: '"' + "paymentId" + '"' + ": " + '"' +$$String:$paymentId:"NoSymbol" + '"' + ","	
+	228			: Write File Line	: '"' + "amount" + '"' + ": " +  $$StringWordEx:$Amount1:"/":1  + ","
+	232			: Set	: Roundoff  : If $VchType="Receipt" then $$CollectionField:$Amount2:1:RcptSalesColl else $$CollectionField:$Amount3:1:PmtPurcaseColl
+	230			: Write File Line	: '"' + "totalAmount" + '"' + ": " + $$StringWordEx:##Roundoff:"/":1   + ","
+	252	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Uploading Purchase Transaction for.."):($Vouchernumber)
+	233			: Write File Line	: '"' + "paidAmount" + '"' + ": " + $$String:$Amount1 +  ","
+	235			: Write File Line	: '"' + "paymentDetails" + '"' + ": " + '"' + $$String:$paymentDetls:"NoComma" + '"' + ","
+	225			: Write File Line	: '"' + "partyName" + '"' + ": " + '"' +$$StringFindAndReplace:$LedNamem:'"':'\"' + '"' + "," 
+	112			: Write File Line	: '"' + "paymentDate" + '"' + ": " + '"' +$$String:($$MMDDYYYYDateFormat:$Date:"/"):"NoComma"+ '"' + ","
+	238			: Write File Line	: '"' + "notes" + '"' + ": " + '"' +$$StringFindAndReplace:$Narration:'"':'\"' + '"' + ","
+	115			: Write File Line	: '"' + "costCenter" + '"' + ": " + '"' +$$String:$CostcentreName:"NoComma" + '"' 
+	
+	281:If:$$IsLastObj:$VoucherNumber
+	292			: Write File Line	: "}"
+	293:Else
+	293A			: Write File Line	: "},"
+	294:	End If
+	
+	294A:End Walk
+	295	:	End Progress
+	296			: Write File Line	: "],"
+	297:Write File Line	: '"count": ' + '"' +$$String:##Dyms_CountrMsgVAr1 + '"' 
+	298		: Write File Line	: "}"
+	5030:	Set File Log Off
+	5040:	Close Target File
+	5044:	Walk Collection:RcptPmtStatusColl
+	5046:	Set	: MasterId1	:	"ID:" + $$String:$Masterid
+	5048:   Modify Object : (Voucher,##MasterId1).RcptPmtStatusflag.RcptPmtStatusflag : "0"
+	5050:	End Walk
+	5060 :	Set				: DymsLocalHostPathRetailer		:	@@RetailerDownloadFTPRcptPmtUpld
+	5070 : 	Copy File		: ##DymsLocalHostPathRetailer	:   @@Dyms_RcptPtmUpld_File
+;	12789:End If
+	12780:Else
+	12790:Msg Box	:	Warning! 	:	"No newly created Receipt or Payment Transactions are available..\n Resolve Errors if Any!"
+	12800:	End If
+	11280:Else
+	11290:Msg Box	:	Warning!	:	"There is an Unprocessed file from FSM. Kindly contact FSM admin to process the pending files"
+	11200:	End If		
+	12810:Else
+	12820:Msg Box	:	Warning! 	:	"Check your Internet"
+	12830:	End If
+	
+
+[Function:CheckRcptPmtCollection]
+
+	Variable 	: VCHChek	 	: String
+	Variable	: MasterIdh		: String
+	Variable	: collectioncnt	: Number
+	
+	bbb : Set	: collectioncnt:$$NumItems:RcptPmtStatusCollChk
+	iii : If: ##collectioncnt>0
+	1j5	:	Start Progress:(##collectioncnt) : ($$LocaleString:"Checking Mandatory Values..") : "Please wait" : ""
+	000	: Walk Collection:RcptPmtStatusCollChk
+	aaa	: Set	: IsEmptyRcptpmtValue	:	No
+	euue: Set	: VCHChek	: $Agnstrefpmt
+
+	 99 :	Set	: MasterIdh	:	"ID:" + $$String:$Masterid
+	001	: Log:"-------------------------------------------------------------------------------------------"
+	
+    002 : IF : ($$IsEmpty:##VCHChek) 
+    003 : 	 Log: "Missing Reference Value, Kindly Update for  " + $VoucherNumber
+    004 :    Set : IsEmptyValue:Yes
+    005 : End If
+	
+    252d:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Missing Mandatory Values in Receipt or Payment Transaction for.."):($VoucherNumber)
+	
+	lll	: If: ($$IsEmpty:$CostcentreName) 
+	106	:	Log: "Missing Cost Center Value, Kindly Update for  "  + $VoucherNumber
+	107	: 	Set: IsEmptyRcptpmtValue:Yes
+	108	: End If
+	
+	49h	: If: ($$IsEmpty:$Amount1)
+	49i	: 	Log: "Missing Amount Value, Kindly Update for  "  +$VoucherNumber
+	49k	:	Set: IsEmptyValue:Yes
+	49j	: End If 
+
+	395	: If: ($$IsEmpty:$VoucherNumber)
+	397	: 	Log: "Missing Voucher Number Value, Kindly Update for  "  + $VoucherNumber
+	398	:	Set: IsEmptyRcptpmtValue:Yes
+	399	: End If 
+	
+	718	: If:	((not $LedNamem contains "Cash" ) and $$IsEmpty:$paymentMethodId)
+	jj	:	Log:"Missing Transaction Type Value, Kinldy Update for  " + $VoucherNumber
+	723	:	Set: IsEmptyRcptpmtValue:Yes
+	728	: End If 
+	
+	7f8	: If:	((Not $$IsEmpty:$paymentMethodId) and $$IsEmpty:$paymentId)
+	jf	:	Log:"Missing Instrument No Value, Kinldy Update for  " + $VoucherNumber
+	7f3	:	Set: IsEmptyRcptpmtValue:Yes
+	7fg	: End If 
+	
+	095	: If: ((not $LedNamem contains "Cash" )and $$IsEmpty:$paymentDetls)
+	097	: 	Log: "Missing Payment Details in remarks Value, Kindly Update for  " +$VoucherNumber
+	098	:	Set: IsEmptyRcptpmtValue:Yes
+	099	: End If
+	
+	195	: If: ($$IsEmpty:$Ledgername)
+	197	: 	Log: "Missing Party Ledger Name Values, Kindly Update for  " +$VoucherNumber
+	198	:	Set: IsEmptyRcptpmtValue:Yes
+	199	: End If
+	
+	295	: If: ($$IsEmpty:$Date)
+	297	: 	Log: "Missing Voucher Date Value, Kindly Update for  " +$VoucherNumber
+	298	:	Set: IsEmptyRcptpmtValue:Yes
+	299	: End If
+	
+	39r	: If: ($Vchtype="Receipt" and $$IsEmpty:($$CollectionField:$Amount2:1:RcptSalesCollChk))
+	39s	: 	Log: "Missing Sales Amount Value, Kindly Update for reference Voucher of " +$VoucherNumber
+	39t	:	Set: IsEmptyRcptpmtValue:Yes
+	39u	: End If 
+	
+	35r	: If: ($Vchtype="Payment" and $$IsEmpty:($$CollectionField:$Amount3:1:PmtPurcaseCollChk))
+	35s	: 	Log: "Missing Purchase Amount Value, Kindly Update for reference Voucher of "  +$VoucherNumber
+	35t	:	Set: IsEmptyRcptpmtValue:Yes
+	35u	: End If 
+
+	385	: If: (##IsEmptyRcptpmtValue=Yes)
+	386	:	 Modify Object : (Voucher,##MasterIdh).RcptPmtStatusflag.RcptPmtStatusflag : "2"
+	387	: Else
+	388	:	 Modify Object : (Voucher,##MasterIdh).RcptPmtStatusflag.RcptPmtStatusflag : "1"
+	389	: End If
+	
+	100	: End Walk
+	20gr: End Progress
+	jkjs: End If
+	uue	: Return
+
+
+[System:Variable]
+	IsEmptyRcptpmtValue : No
+	
+[Variable:IsEmptyRcptpmtValue]
+	Type	: Logical
+	Default	:	No
+	
+
+[Collection:RcptPmtStatusCollChk]
+	Collection	:RcptStatusCollChk
+	Collection	:PmtStatusCollChk
+	
+
+[Collection:RcptStatusCollChk]
+	
+	Type		: Vouchers	: VoucherType
+	Child of	: $$VchTypeReceipt
+	Belongs To	: Yes
+	Fetch		: Vouchernumber, RcptPmtStatusflag, Masterid, Narration, Date,CostcentreName, VoucherTypeOrigName, Ledgername
+	Compute		: Amount1		:	$$String:$Amount:"NoComma"
+	Compute		: Vchtype		:	$Vouchertypename
+	Compute		: LedNamem		:	$AllLedgerEntries[2].Ledgername
+	Compute		: paymentMethodId:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].TRANSACTIONTYPE then "" else $AllLedgerEntries[2].BankAllocations[1].TRANSACTIONTYPE
+	Compute		: paymentId		:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].INSTRUMENTNUMBER then "" else $AllLedgerEntries[2].BankAllocations[1].INSTRUMENTNUMBER
+	Compute		: paymentDetls	:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].NARRATION then "" else $AllLedgerEntries[2].BankAllocations[1].NARRATION
+	Compute		: Agnstrefpmt	:	$AllLedgerEntries[1].BillAllocations[1].Name
+	Filter		: statuesflagfilterRcptPmtChk
+
+;select $Vouchernumber, $RcptPmtStatusflag, $Vchtype, $Narration, $Ledgername, $LedNamem, $Agnstrefpmt, $paymentMethodId, $paymentId, $Amount, $CostcentreName, $VoucherTypeOrigName from RcptStatusCollChk
+
+[Collection:RcptSalesCollChk]
+	
+	Type				:	Vouchers	: VoucherType
+	Child Of			:	$$VchTypeSales
+	Belongs To			:	Yes
+	Fetch				:	VoucherNumber
+	Compute				:	Amount2			:	$$String:$Amount:"NoComma"
+	Fetch				:   Ledgerentries.BILLALLOCATIONS.*
+	Compute				:	SalsAgnstRef	:	$Ledgerentries[1].BILLALLOCATIONS[1].Name
+	Filter				:	SalesAginsfltrChk
+
+;select $VoucherNumber, $SalsAgnstRef from RcptSalesCollChk
+
+[Collection:PmtStatusCollChk]
+	
+	Type		: Vouchers	: VoucherType
+	Child of	: $$VchTypePayment
+	Belongs To	: Yes
+	Fetch		: Vouchernumber, RcptPmtStatusflag, Masterid, Narration, Date,CostcentreName, VoucherTypeOrigName
+	Compute		: Amount1		:	$$String:$Amount:"NoComma"
+	Compute		: Vchtype		:	$Vouchertypename	
+	Compute		: LedNamem		:	$AllLedgerEntries[2].Ledgername
+	Compute		: paymentMethodId:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].TRANSACTIONTYPE then "" else $AllLedgerEntries[2].BankAllocations[1].TRANSACTIONTYPE
+	Compute		: paymentId		:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].INSTRUMENTNUMBER then "" else $AllLedgerEntries[2].BankAllocations[1].INSTRUMENTNUMBER
+	Compute		: paymentDetls	:	If $$IsEmpty:$AllLedgerEntries[2].BankAllocations[1].NARRATION then "" else $AllLedgerEntries[2].BankAllocations[1].NARRATION
+	Compute		: Agnstrefpmt	:	$AllLedgerEntries[1].BillAllocations[1].Name
+	Filter		: statuesflagfilterRcptPmtChk
+
+;select $Vouchernumber, $RcptPmtStatusflag, $Vchtype, $Narration, $LedNamem, $PurcVchno, $PurcAmt, $Agnstrefpmt, $paymentMethodId, $paymentId, $Amount, $CostcentreName, $VoucherTypeOrigName from PmtStatusCollChk
+[Collection:PmtPurcaseCollChk]
+	
+	Type				:	Vouchers	: VoucherType
+	Child Of			:	$$VchTypePurchase
+	Belongs To			:	Yes
+	Fetch				:	VoucherNumber, reference, Amount, Vouchertypename
+	Compute				:	Amount3		:	$$String:$Amount:"NoComma"
+	Filter				:	filtrpurchChk
+
+;select $Vouchernumber, $reference from PmtPurcaseCollChk
+
+	
+[System:Formulae]
+		statuesflagfilterRcptPmtChk			:	$RcptPmtStatusflag=$$String:"1" or $RcptPmtStatusflag=$$String:"2"
+		SalesAginsfltrChk					:	$VoucherNumber=##VCHChek
+		filtrpurchChk						:	$reference=##VCHChek
+		
+

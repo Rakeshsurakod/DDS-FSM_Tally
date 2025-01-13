@@ -1,0 +1,280 @@
+;************************************************************************************************
+;;;;;;;;;;; Added button for Status flag changing on Payment and Purchase Return Voucher ;;;;;;;;;
+;************************************************************************************************
+
+[#Menu:Gateway of Tally]
+	
+	Add:Button		:	At End	:BatchModeChangeStatus	
+	
+[Button:BatchModeChangeStatus]
+	
+	Title			:	"Change Status"
+	Key	 			: 	F5
+	Modifier Buttons:	ChangestatusLedger;, EnableCustomer;
+	Action 			: 	Modify Variables	: ChangeStatusWithSelectedPeriod	
+	Inactive		:	Not ##TallyAdminMenu
+	
+[Button:ChangestatusLedger]
+	Title			:	"Ledger Group"
+	Key				:	Ctrl + F5
+	Action			: 	Alter:ChangeStatusLedgergroup
+	Inactive		:	Not ##TallyAdminMenu
+;[Button:EnableCustomer]
+;	Title           :	"Customer Sync";If ##EnableCustomersync Then $$LocaleString:"Ledger Disable" Else $$LocaleString:"Ledger Enable"
+;	Key				:	Alt + F5
+;	Action			:	Call:Dyms_CustomerUpload;
+;	Line			: 	1
+	
+[Report:ChangeStatusWithSelectedPeriod]
+	
+	Title       	: 	$$LocaleString:"Status Change On StockItem"
+    Form        	: 	BatchMode Status Change On Vouchers
+	Object			:	Company
+	
+[Form : BatchMode Status Change On Vouchers]
+
+    Width      		: 	50% Page
+    Height     		: 	40% Page
+    Part       		: 	FormSubTitle,BatchMode Status Change On Vouchers
+    Local      		: 	Field : FormSubTitle : Info : $$LocaleString:" Status Flag Update On Stock Items :"
+	On: Form Accept	: 	Yes: Call: BatchModeStatusChangeFunction
+	On:	Form Accept	:	Yes: Form Accept
+	
+
+	[Function:BatchModeStatusChangeFunction]
+	
+	Variable		:	BatchModeMasterIdvl	:	String
+	Variable		:	vsVchMID123		:	String
+
+	10	: If:@@BatchModePaymentAndPurchaseReturnCollectionCount>0
+	05	: Start Progress:(@@BatchModePaymentAndPurchaseReturnCollectionCount) : ($$LocaleString:"Flagging StockItems..") : "Please wait" : ""
+	07	: Start Batch Post
+	20	: Walk Collection:	BatchModePaymentAndPurchaseReturnCollection
+	25	: Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:""):($Name)
+	130	: Set			: BatchModeMasterIdvl 	: $MasterId
+	
+		Local Formula	: SalesMasterID		: $$Number:##BatchModeMasterIdvl
+		v00	: SET		: vsVchMID123		: @SalesMasterID
+		Local Formula	: SalesVchID		: "ID:" + ##vsVchMID123
+	
+	150	: New Object	: Stock Item			: $Name	:	Yes
+	155 : Set Value		: StockPBelogsStatus	: #BatchModeStatusChangeOnStatus
+	157 : Set Value		: StockPBelogsStatus	: #BatchModeStatusChangeOnStatus
+;	160 : Set Value		: TiaraTPITstatus			: #BatchModeStatusChangeOnStatus
+	180	: Accept
+	
+	190 : End Walk
+	191	: End Batch Post
+	193	: End Progress
+	195	: Msg Box:Success:($$String:@@BatchModePaymentAndPurchaseReturnCollectionCount)+" Stock Items are updated"
+
+	200 : Else
+	205	: Msg Box:Message:"There is no Stock Items"
+	210 : End If
+	
+;;;;;;; Ledger flag ;;;;;;;;;;;;;;;;
+[Report:ChangeStatusLedgergroup]
+	
+	Title       	: 	$$LocaleString:"Status Change On Ledger Master"
+    Form        	: 	ChangeStatusLedgergroup
+	Object			:	Company
+	
+[Form : ChangeStatusLedgergroup]
+
+    Width      		: 	50% Page
+    Height     		: 	40% Page
+    Part       		: 	FormSubTitle,LedgerstatusList
+    Local      		: 	Field : FormSubTitle : Info : $$LocaleString:" Status Flag Update On Ledger Master :"
+	On: Form Accept	: 	Yes: Call: BatchModeLedgerStatusChange
+	On:	Form Accept	:	Yes: Form Accept	
+	
+	[Function:BatchModeLedgerStatusChange]
+
+	10	: If:@@BatchmodeLedgerflagset>0
+	05	: Start Progress:(@@BatchmodeLedgerflagset) : ($$LocaleString:"Flagging Customers..") : "Please wait" : ""
+	07	: Start Batch Post
+	20	: Walk Collection:	LedgerflagstatusColl
+	25	: Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:""):($Name)
+	150	: New Object	: Ledger			: $Name	:	Yes
+	155 : Set Value		: LedgerMststatusflag	: #Ledgerstatusflag
+	157 : Set Value		: LedgerMststatusflag	: #Ledgerstatusflag
+	180	: Accept
+	190 : End Walk
+	192	: End Batch Post
+	193	: End Progress
+	195	: Msg Box:Success:($$String:@@BatchmodeLedgerflagset)+" Ledger Master are updated"
+	200 : Else
+	205	: Msg Box:Message:"There is no Ledger Master"
+	210 : End If
+	
+		
+[Collection:BatchModePaymentAndPurchaseReturnCollection]
+
+	Type		:	StockItem
+	Child Of	:	#BatchModeStatusChangeOnVouchersType
+	Belongs To	:	Yes
+	Fetch		:	Name, StockPBelogsStatus
+
+;select $Name, $StockPBelogsStatus from BatchModePaymentAndPurchaseReturnCollection
+[System:Formulae]
+	
+	BatchModeVoucherTypeFilterOnStatusChangeForm:$VoucherTypeName=#BatchModeStatusChangeOnVouchersType
+	BatchModePaymentAndPurchaseReturnCollectionCount:$$NumItems:BatchModePaymentAndPurchaseReturnCollection
+	BatchmodeLedgerflagset:$$NumItems:LedgerflagstatusColl
+	
+[Collection: LedgerflagstatusColl]
+
+	Type		: Ledger
+	Child Of	: #Ledgergroupselect
+	Belongs To	: Yes
+	Fetch 		: Name,LedgerMststatusflag
+
+;select $Name, $LedgerMststatusflag from LedgerflagstatusColl
+
+;;;;;;;;;; Stock Journal itesm update Coz Procurment heppens here ;;;;;;;;;;;;;;;;;
+
+;[#Form: Stock Journal Color]
+;	On: Form Accept	: 	Yes: Call: voucherModeStatusChangeFunctionSJ
+;	On:	Form Accept	:	Yes: Form Accept
+	
+[#Form:SalesColor]
+	On: Form Accept	: 	Yes: Call: voucherModeStatusChangeFunction
+	On:	Form Accept	:	Yes: Form Accept
+	
+[Function:voucherModeStatusChangeFunction]
+	
+	10	: If:@@InventoryCount>0
+	20	: Walk Collection:	AllInventoryEntries
+	150	: New Object	: Stock Item			: $StockItemName	:	Yes
+	155 : Set Value		: StockPBelogsStatus	: 1
+	157 : Set Value		: StockPBelogsStatus	: 1
+;	160 : Set Value		: TiaraTPITstatus			: #BatchModeStatusChangeOnStatus
+	180	: Accept
+	
+	190 : End Walk
+;	195	: Msg Box:Success:($$String:@@InventoryCount)+" Stock Items are updated"
+
+	200 : Else
+;	205	: Msg Box:Message:"There is no Stock Items"
+	210 : End If
+	
+[Function:voucherModeStatusChangeFunctionSJ]
+	
+	Variable		:	InvOut		:	String: $$NumItems:InventoryentriesOut
+	Variable		:	InvIn		:	String: $$NumItems:InventoryentriesIn
+
+	10	: If: $$NumItems:InventoryentriesOut>0 or $$NumItems:InventoryentriesIn>0 
+	
+	20	: Walk Collection:InventoryEntriesIn
+	150	: New Object	: Stock Item			: $StockItemName	:	Yes
+	155 : Set Value		: StockPBelogsStatus	: 1
+	157 : Set Value		: StockPBelogsStatus	: 1
+	180	: Accept
+	190 : End Walk
+	
+	201	: Walk Collection:InventoryEntriesOut
+	1501 : New Object	: Stock Item			: $StockItemName	:	Yes
+	1551 : Set Value	: StockPBelogsStatus	: 1
+	1571 : Set Value	: StockPBelogsStatus	: 1
+	1801 : Accept
+	1901 : End Walk
+	
+;	195	: Msg Box:Success:($$String:(##InvOut + " and " + ##InvIn))+" Stock Items are updated"
+	200 : Else
+;	205	: Msg Box:Message:"There is no Stock Items"
+	210 : End If
+	
+[Part : BatchMode Status Change On Vouchers]
+	
+	Line			:	BatchMode Status Change On VouchersType	,BatchMode Status Change On Status;,Ledgerstatusflagset
+    Local 			: 	Line  : Default         : Space Top : 1
+
+[Line : BatchMode Status Change On VouchersType]
+	
+	Field       	: 	Medium Prompt, BatchMode Status Change On VouchersType
+    Local       	: 	Field : Medium Prompt 	:Info 	: $$LocaleString:"Stock Group :"
+ 
+[Field : BatchMode Status Change On VouchersType]
+	
+	Use            	:  	Name Field
+	Validate       	:  	Not $$IsEmpty:$$Value
+	Style          	:  	Small Bold
+	Width          	:  	15 
+	Table		   	:  	BatchMode Voucher Type, Primary
+	Storage		   	:  	BatchModeVoucherType
+	Show Table	   	:  	Always
+	
+[Line : BatchMode Status Change On Status]
+	
+	Field       	: 	Medium Prompt, BatchMode Status Change On Status
+    Local       	: 	Field : Medium Prompt 	:Info 	: $$LocaleString:"Flag Status (1 or 0):"
+	
+[Field : BatchMode Status Change On Status]
+	
+	Use            	:  	Name Field
+	Validate       	:  	Not $$IsEmpty:$$Value
+	Style          	:  	Small Bold
+	Width          	:  	15 
+	Storage		   	:  	BatchModeVoucherStatus	
+	Validation		:	@@flag
+	
+[Part : LedgerstatusList]
+	
+	Line			:	LedgerstatusList,Ledgerstatusflagset
+    Local 			: 	Line  : Default         : Space Top : 1
+
+[Line:LedgerstatusList]	
+	Field       	: 	Medium Prompt, Ledgergroupselect 
+    Local       	: 	Field : Medium Prompt 	:Info 	: $$LocaleString:"Ledger Group list :"
+	
+[Field:Ledgergroupselect]
+	Use            	:  	Name Field
+	Validate       	:  	Not $$IsEmpty:$$Value
+	Style          	:  	Small Bold
+	Width          	:  	15 
+	Table		   	:  	Ledgergrouplist
+	Storage		   	:  	Ledgergrouplist
+	Show Table	   	:  	Always
+	
+[Line:Ledgerstatusflagset]
+	Field       	: 	Medium Prompt, Ledgerstatusflag
+    Local       	: 	Field : Medium Prompt 	:Info 	: $$LocaleString:"Flag Status (1 or 0)):"
+	
+[Field:Ledgerstatusflag]
+	Use            	:  	Name Field
+	Validate       	:  	Not $$IsEmpty:$$Value
+	Style          	:  	Small Bold
+	Width          	:  	15 
+	Storage		   	:  	Ledgerstatusflag
+	Validation		:	@@flag
+	
+[Collection: BatchMode Voucher Type]
+
+    Format      	: 	$$Name, 30
+    Align       	: 	Right
+    FullHeight  	: 	Yes
+    Title       	: 	$$LocaleString:"List of Stock Group"
+    Type        	: 	Stock Group
+	Fetch			: 	Name,Parent
+    Variable    	: 	SStockGroup
+    BelongsTo   	: 	Yes
+    Set as      	: 	$Name
+;	Filter			: 	BatchModeVoucherTypeFilter
+
+;select $Name, $Parent from BatchModeVoucherType
+[System:Formulae]
+	flag : $$value="1" or $$Value="0"
+	BatchModeVoucherTypeFilter: $$IsReceipt:$Name or $$IsSales:$Name;$$IsDebitNote:$Name or $$IsPayment:$Name or $$IsSales:$Name;$Parent=@@Ispurchase
+
+[Collection:Ledgergrouplist]
+	Format      	: 	$$Name, 30
+    Align       	: 	Right
+    FullHeight  	: 	Yes
+    Title       	: 	$$LocaleString:"List of Ledger Group"
+    Type        	: 	Group
+	Variable    	:	Group Name
+	Fetch			: 	Name,Parent
+    BelongsTo   	: 	Yes
+    Set as      	: 	$Name
+	
+;select $Name from Ledgergrouplist

@@ -1,0 +1,439 @@
+;;;;;;;;;; Jai Shree Raam ;;;;;;;;;;;
+
+;;;;;;;; FTP Directory collection
+[Collection: Dyms_FTPDirectoryInventoryColl]
+	
+	Data Source : Directory	: @@RetailerInventoryDownloadFTP     
+	Filter		: Dyms_FilterFiles
+	Format		: $Name, 25
+	Title       : "File Listing"
+	Sub Title	: "File Name", "File Size", "Read Only"
+	
+;select $Name from Dyms_FTPDirectoryInventoryColl
+;;;;;;;; Local Directory collecction
+[Collection: Dyms_DirectoryInventoryColl]
+	
+	Data Source : Directory	: @@FSMInventoryfilepatch 
+	Filter		: Dyms_FilterFiles
+	Format		: $Name, 25
+	Title       : "File Listing"
+	Sub Title	: "File Name", "File Size", "Read Only"
+;select $name from Dyms_DirectoryInventoryColl
+
+
+[Collection	:DymsJsonInventoryCollection]
+	
+	Data Source	: File JSON		: ##Dyms_LocalFileNames 
+	JSON Object Path	: "STOCKENTRY:1"
+	Fetch	: ENTRYNUMBER
+
+;select $ENTRYNUMBER from DymsJsonInventoryCollection
+
+[Collection:DymsJsonStkInventoryCollections]
+	
+	Source Collection:DymsJsonInventoryCollection
+	Compute		: ENTRYNUMBER					:	$$String:$ENTRYNUMBER
+	Walk		: INVENTORY
+	Compute		: PRODUCTNAME						: $PRODUCT_NAME
+	Compute		: PRODUCTQTY						: $PRODUCT_QTY
+	Compute		: PRODUCTCOST						: $PRODUCT_COST
+	Compute		: PRODUCTTOTALCOST					: $PRODUCT_TOTALCOST:
+	Filter		:Dyms_ProductFilterINV
+	
+;select $PRODUCTNAME, $HSNCODE from DymsJsonStkInventoryCollections
+
+
+[Function:Dyms_InventoryDownload]
+
+	Variable	:Dyms_StkEntryNumber	:String
+	Variable	:Dyms_StkEntryDate		:String
+	Variable	:Dyms_StkEntryTOTALAMOUNT:String
+	Variable	:Dyms_ServiceItemName	:String
+	Variable	:Dyms_PRODUCTOpenQTy	:Number
+	Variable	:Dyms_PRODUCTOpenRate	:String	
+	Variable	:Dyms_PRODUCTOpenAmt	:Number	
+	Variable	:Dyms_GSTCalcType		:Number
+	Variable	:Dyms_LocalFileNames	:String
+	Variable	:Dyms_Service_Count		:Number	
+	Variable	:Errorcount				:Number	: 0
+	Variable	:Dyms_CountrMsgVAr1		:String
+	Variable	:DymsLocalHostPathRetailer	: String
+	Variable	:OpeningBalExists			: Logical
+	
+	000	:	Log: "Stock Journal is Running"	
+	020 :	Set			: DymsLocalHostPathRetailer			:	@@FSMInventoryfilepatch
+	034	:	If:$$IsInternetActive
+;	02  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "Customer"
+;	03  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : ""
+	035	:	If:NOT $$IsEmptyCollection:Dyms_FTPDirectoryInventoryColl 
+
+;;;;;;;;;;;;;;;;; FTP File Download into local Machine ;;;;;;;;;;;;;;;;;;;;
+	036	:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:Dyms_FTPDirectoryInventoryColl 
+	037	:	Start Progress:(##Dyms_CountrMsgVAr1) : "Downloading Json Files From FTP" : "Please Wait" : ""
+ 	040 :	Walk Collection	:	Dyms_FTPDirectoryInventoryColl
+	056	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Downloading.."):($Name)
+  	055 : 	Copy File		: ##DymsLocalHostPathRetailer	:   @@RetailerInventoryDownloadFTP+"/"+$Name
+	060	:	End Walk
+	061	:	End Progress
+
+	065	: Walk Collection	:	Dyms_DirectoryInventoryColl
+	068	:	Set	:	Dyms_LocalFileNames	:	""
+	070	:	Set	:	Dyms_LocalFileNames	:	@@FSMInventoryfilepatch+"\"+$Name
+	080	:	Set	:	Dyms_Service_Count	:	$$NumItems:DymsJsonInventoryCollection
+	
+	085	:	If:##Dyms_Service_Count>0
+	088	:	Start Batch Post:100
+	
+	;;;;;;;;;;;;;;;; Service Item Log File ;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+	121		: 	Set File Log On
+	122		: 	OPEN FILE :@@FSMInventoryLogfilepatch:Text:Write 
+	123		:	Write File Line	: "==========================================================================="
+	124		: 	Write File Line	: "Total Stock Journal to Update - "+$$String:(##Dyms_Service_Count)+" On "+$$String:($$MachineDate)+"-"+$$String:($$MachineTime)
+	125		:	Close Target File
+	126		:	Set File Log Off
+	
+	190p 	: Start Progress: ##Dyms_Service_Count :($$LocaleString:"Updating"):"Stock Journal " : ""
+	
+	110s	:	Set	:	Dyms_ServiceItemName		:""
+	111a	:	Set	:	Dyms_PRODUCTOpenQTy			:""
+	120a	:	Set	:	Dyms_PRODUCTOpenAmt			:""
+	115n	:	Set	:	Dyms_PRODUCTOpenRate		:""
+	
+	500		:	Walk Collection:DymsJsonInventoryCollection
+	505		:	Set	: Dyms_StkEntryNumber		:$ENTRYNUMBER
+	510		:	Set	: Dyms_StkEntryDate			:$DATE
+	515		:	Set	: Dyms_StkEntryTOTALAMOUNT	:$TOTALAMOUNT
+
+	 10 	: New Object : Voucher
+	 20 	: Set Value  : VoucherTypeName : "Stock Journal"  ;;;$$VchTypeStockJrnl 
+	 25		: Set Value	 : VoucherNumber   : $$String:##Dyms_StkEntryNumber
+	 30 	: Set Value  : Date            : $$Date:##Dyms_StkEntryDate   ;;"31-mar-2015"
+	 50		: Set 	 	 : SVViewName 	   : $$SysName:ConsVchView
+
+	418		:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Importing Stock Journal  "):(##Dyms_StkEntryNumber)
+	200		: Walk Collection:DymsJsonStkInventoryCollections
+	2104	:	Set :	Dyms_ServiceItemName		:$PRODUCTNAME	
+	211		:	Set :	Dyms_PRODUCTOpenQTy			:$PRODUCTQTY
+	215		:	Set :	Dyms_PRODUCTOpenRate		:$PRODUCTCOST				
+	2201	:   Set	:	Dyms_PRODUCTOpenAmt			:$PRODUCTTOTALCOST
+	
+	 801 : Insert Collection Object     : INVENTORYENTRIESIN
+	 901 : 	Set Value : IsDeemedPositive	: Yes 
+	1001 : 	Set Value : StockitemName 		: ##Dyms_ServiceItemName
+	1101 : 	Set Value : GodownName    		: $$TgtObject:@@DymcsFTPCustomerInvenFolder11  
+ 	1201 : 	Set Value : BilledQty    		: $$TgtObject:$$AsQty:##Dyms_PRODUCTOpenQTy 
+	131 : 	Set Value : ActualQty     		: $$TgtObject:$$AsQty:##Dyms_PRODUCTOpenQTy
+    160	:	    Insert Collection Object : BatchAllocations
+	170	:		  Set Value : GodownName 			: $$TgtObject:@@DymcsFTPCustomerInvenFolder11  
+	180	:		  Set Value	: BatchName				: $$TgtObject:"Primary Batch"
+	190	:		  Set Value	: DestinationGodownName	: $$TgtObject:@@DymcsFTPCustomerInvenFolder11   
+	210	:		  Set Value : ActualQty				: $$TgtObject:$$AsQty:##Dyms_PRODUCTOpenQTy
+	220	: 		  Set Value : BilledQty				: $$TgtObject:$$AsQty:##Dyms_PRODUCTOpenQTy
+	630 : 		  Set Value	: RATE 					: $$TgtObject:$$AsRate:##Dyms_PRODUCTOpenRate;($$AsAmount:##StckJrnlAmt)/$$TgtObject:($$AsQty:##StckJrnlQty)
+	640 : 		  Set Value	: Amount				: $$TgtObject:($$AsAmount:##Dyms_PRODUCTOpenAmt) *-1
+	240	:		  Set Target: ..
+	250	:	Set Target	: ..
+
+;	260 : Insert Collection Object  : INVENTORYENTRIESOUT
+;	270 : 		Set Value : IsDeemedPositive	: No
+;	280 : 		Set Value : STOCKITEMNAME 		:  ##Dyms_ServiceItemName 
+;	290 : 		Set Value : GodownName    		:  $$TgtObject:@@DymcsFTPCustomerInvenFolder11
+;	300 : 		Set Value : BilledQty     		:  $$TgtObject:$$AsQty:30 * -1 ; ##Qtyl * ##Dyms_PRODUCTOpenQTy)
+;	310 : 		Set Value : ActualQty     		:  $$TgtObject:$$AsQty:30 * -1  ; ##Qtyl * ##Dyms_PRODUCTOpenQTy)
+;	
+;    340 :		    Insert Collection Object : BatchAllocations
+;	350	:		        Set Value 	: GodownName 			: $$TgtObject:@@DymcsFTPCustomerInvenFolder11
+;	360	:		        Set Value	: BatchName				: $$TgtObject:"Primary Batch"
+;	370	:		        Set Value	: DestinationGodownName	: $$TgtObject:@@DymcsFTPCustomerInvenFolder11
+;	390	:		        Set Value 	: ActualQty				: ($$TgtObject:$$AsQty:"30.00") *-1;;##Qtyl * ##stkqty)* -1;; / ##uf * -1
+;	400	: 		        Set Value 	: BilledQty				: ($$TgtObject:$$AsQty:"30.00") *-1;;##Qtyl * ##stkqty) * -1;;/ ##uf * -1
+;	420	:		        Set Target	: ..
+;	430	:	Set Target	: ..	
+	430a : End walk
+	450 : Create Target	
+
+	
+;;;;;;;;;;;;; Log File ;;;;;;;;;;;;;;;;;;;;
+	1060 : IF:not $$LastResult
+	5004 :   Set File Log On
+	5005 :   OPEN FILE :@@FSMInventoryLogfilepatch:Text:Write 
+	5010 :	 Write File Line	: $$String:($$LastError)
+	5020 :	 Write File Line	: $$String:"Error from :"+$$String:##Dyms_ServiceItemName
+	5030 :	 Set File Log Off
+	5040 :	 Close Target File
+	1040 : 	Increment: Errorcount
+	1188 : End If
+	1020 : End Walk
+;	1200 : End Walk
+ 
+	;;;;;;;;;;;;;;;; Error Message ;;;;;;;;;;;;;;;;
+	LocalFormula:	DateTimeFolderNN	:	$$LocaleString:($$YearOfDate:$$MachineDate)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$MonthOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$DayOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$StringFindAndReplace:($$MachineTime):":":"-")
+	9191 : If: ##Errorcount = 0
+	1201E : 	Copy File		: @@FSMInventoryfileArchpatch+ "\" + @DateTimeFolderNN + "\"	:   ##Dyms_LocalFileNames
+	1202 :	Delete File:##Dyms_LocalFileNames
+	1201F: 	Copy File		: @@RetailerInventoryDownloadArch+"/"+@DateTimeFolderNN+"/"	:   @@RetailerInventoryDownloadFTP+"/"+$Name
+	1205F: 	Delete File:   @@RetailerInventoryDownloadFTP+"/"+$Name
+	1210 :	Log: "Status : Process Completed! Stock Journal Successfully!! "
+	1205 : Else
+	1219 :	Log: "Status : Error While Importing!! Please Refer Log File  " +$$LocaleString:@@FSMInventoryLogfilepatch
+	1040a: Decrement: Errorcount
+	1220 : End If
+	
+ 	1288 : End Progress
+	1330 : End Batch Post
+	1331 : Else
+	1400 : End If
+	1410 : End Walk
+	
+	12780 : Else
+	12790 : Log	:"No Data File In Stock Entry Folder"
+	12800 : 	End If
+	12810 : Else
+	12820 : Msg Box	:	"Warning !":"Check Internet Availability!!"
+	12830 : 	End If
+	12835 : Return
+	
+
+[System:Formulae]
+	
+	Dyms_ProductFilterINV			: $ENTRYNUMBER=##Dyms_StkEntryNumber
+	
+	RetailerInventoryDownloadFTP	: $$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@FSMInventoryFolder
+	RetailerInventoryDownloadArch 	: $$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@FSMInventoryFolderArc
+	FSMInventoryfilepatch			: @@FSMDatapath + "\" + @@FSMInventoryFolder
+	FSMInventoryFolder         		: $FTPFolderInvfldr:Company:##SVCurrentCompany
+	FSMInventoryLogfilepatch		: @@FSMInventoryfilepatch + "\InventoryLog.txt"
+	FSMInventoryfileArchpatch		: @@FSMDatapath + "\" + @@FSMInventoryFolderArc
+	FSMInventoryFolderArc       	: $FTPFolderInvfldrArch:Company:##SVCurrentCompany
+	
+
+
+;;;;;;;;;;; Stock Journal Upload ;;;;;;;;;;;;;;;;
+
+	
+[#Line: Form SubTitle]
+	Field	:	StatusflagStkJrnl
+		
+[Field	:	StatusflagStkJrnl]
+
+	Style       : Normal Bold
+	FullWidth   : No
+	Skip        : Yes
+	Set Always	: Yes
+	Set as		: $StatusflagStkJrnl
+	Storage		: StatusflagStkJrnl
+	Invisible	: Yes
+		
+[#Part: SJ MainTitle]
+
+	Local		: Style : Default       : Height : @@SmallSize
+	
+[#Form: Stock Journal Color]
+	On: Form Accept	: 	$$InCreateMode : Call: StkJrnalStatusChangeFunction
+	On:	Form Accept	:	Yes: Form Accept
+	
+[Function:StkJrnalStatusChangeFunction]
+	
+	Variable		:	InvOut		:	String
+	Variable		:	InvIn		:	Number	: $$NumItems:InventoryentriesIn
+	Fetch Object	:	Voucher   	: 	##VMid  : InventoryentriesOut.StockItemName
+	
+    00 : Set	:	InvOut	:$InventoryentriesOut.StockItemName	
+	10 : If		:  ##InvOut = " End of List" and ##InvIn>0 
+	20 : Set Value		: StatusflagStkJrnl	: "1"
+	30 : Set Value		: StatusflagStkJrnl	: "1"
+	40 : End If
+	
+
+[Collection:StkJrnalStatusColl]
+	
+	Type		: Vouchers	: Voucher Type
+	Child Of	: $$VchTypeStockJrnl
+	Belongs To	: Yes
+	Fetch		: Vouchernumber, StatusflagStkJrnl, Masterid, Amount, Date	
+	Compute		: Amounttlt	:	$$CollAmtTotal:InventoryentriesIn:$Amount
+	Filter		: statuesflagfilter
+
+;select $Vouchernumber, $StatusflagStkJrnl, $Amounttlt, $Date, $Masterid from StkJrnalStatusColl
+
+[Collection:StkJrnalInventoryColl]
+	Source Collection	:	StkJrnalStatusColl
+	Fetch				:	VoucherNumber, Date, Amount
+	Walk 				: 	InventoryentriesIn
+	Fetch				:	StockItemName, Rate, BilledQty, GodownName
+	Filter				:	Vchnofilter
+
+;select $Vouchernumber, $StockItemName, $Rate, $Amount, $BilledQty, $GodownName from StkJrnalInventoryColl
+[System:Formulae]
+	statuesflagfilter		:	$StatusflagStkJrnl="1" and $$IsEmpty:$$NumItems:Inventoryentriesout
+	Dyms_StkJrnl_FileNew  	: 	@@Dyms_Item_Main+"\productinventory.json";"\Tally_JV_Expert.xml"
+	Vchnofilter				:	$VoucherNumber=##Find1stStr
+	
+[Function:Dyms_StockJrnlProductUpload]
+	
+	Variable:VoucherNo					:	String
+	Variable:MasterId1					:	String
+	Variable:Find1stStr					:	String
+	Variable:ProductName				:	String
+	Variable:DymsLocalHostPathRetailer			: String
+	Variable:TempDSRNAme,DymsFTPPathProductCode	:String
+	Variable:Dyms_CountrMsgVAr1			:	Number
+	Variable:DymsFTPPathRetailer		:	String
+
+	000	:	Log: "Stock Journal Inventory Upload Running"
+	
+	002 :	Set			: DymsFTPPathProductCode			:$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPCustomerInvenFolder+"/productinventory.json"
+	003	:	If:$$IsInternetActive
+;	02  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "Inventory"
+;	03  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : "All"
+	059	:	If: not $$IsFileExists:##DymsFTPPathProductCode
+	127	:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:StkJrnalStatusColl
+	004	:	If:##Dyms_CountrMsgVAr1>0
+	004a:	Delete File	:	@@Dyms_StkJrnl_FileNew
+	005	: 	Set File Log On
+	006	: 	OPEN FILE :@@Dyms_StkJrnl_FileNew:Text:Write :ASCII
+	020			: Truncate File
+	040			: Write File Line	: "{"
+	100			: Write File Line	: '"' + "STOCKENTRY" + '"' + ": " + "[" 
+	128	:	Start Progress:(##Dyms_CountrMsgVAr1) : ($$LocaleString:"Upload Stock Journal Inventory..") : "Please wait" : ""
+	201	:	Walk Collection:StkJrnalStatusColl;ListofDymcsInv
+	204			: Write File Line	: "{"
+	206	:	Set	:	Find1stStr	:	 $$StringFindAndReplace:$VoucherNumber:"\":"\\'"
+	210			: Write File Line	: '"' + "ENTRYNUMBER" + '"' + ": " + '"' +$$StringFindAndReplace:##Find1stStr:'"':'\"' + '"' + ","
+	220			: Write File Line	: '"' + "DATE" + '"' + ": " + '"' +$$StringFindAndReplace:$Date:'"':'\"' + '"' + ",";($$ReptField:Name:2:StockItem:$Name):"\":"\\" + '"' + ","
+	230			: Write File Line	: '"' + "TOTALAMOUNT" + '"' + ": " + '"' + $$StringWordEx:($$String:$Amounttlt):"/":1  + '"' + ","
+	252	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Uploading Stock Journal Inventory for.."):(##Find1stStr)
+
+	260			: Write File Line	: '"' + "INVENTORY" + '"' + ": " + "[" 
+	
+	
+	262:	Walk Collection	:	StkJrnalInventoryColl
+	206a		: Set	:	ProductName	:	 $$StringFindAndReplace:$StockItemName:"\":"\\'"
+	264			: Write File Line	: "{"
+	270			: Write File Line	: '"' + "PRODUCT_NAME" + '"' + ": " + '"' +$$StringFindAndReplace:##ProductName:'"':'\"' + '"' + ","
+	270A			: Write File Line	: '"' + "PRODUCT_CODE" + '"' + ": " + '"' +$$StringFindAndReplace:$StockItemName:'"':'\"' + '"' + ","
+	270B			: Write File Line	: '"' + "PRODUCT_QTY" + '"' + ": " + '"' +$$String:$BilledQty:"NoSymbol" + '"' + ","
+	270C			: Write File Line	: '"' + "PRODUCT_COST" + '"' + ": " + '"' +$$String:($$StringWordEx:$Rate:"/":1):"NoSymbol" + '"' + "," 
+	270D			: Write File Line	: '"' + "PRODUCT_TOTALCOST" + '"' + ": " + '"' +$$StringWordEx:($$String:$Amount):"/":1 + '"' ;+ ","
+	271:	If:$$IsLastObj:$Amount
+	272			: Write File Line	: "}"
+	273	:	Else
+	274			: Write File Line	: "},"
+	275	:	End If
+	276:	End Walk
+	280			: Write File Line	: "]"
+
+	281:If:$$IsLastObj:$VoucherNumber
+	292			: Write File Line	: "}"
+	293:Else
+	293A			: Write File Line	: "},"
+	294:	End If
+	
+	294A:End Walk
+	295	:	End Progress
+	296			: Write File Line	: "],"
+	297:Write File Line	: '"COUNT": ' + '"' +$$String:##Dyms_CountrMsgVAr1 + '"' 
+	298		: Write File Line	: "}"
+	5030:	Set File Log Off
+	5040:	Close Target File
+	5044:	Walk Collection:StkJrnalStatusColl
+	5046:	Set	: MasterId1	:	"ID:" + $$String:$Masterid
+	5048:   Modify Object : (Voucher,##MasterId1).StatusflagStkJrnl.StatusflagStkJrnl : "0"
+	5050:	End Walk
+	5060 :	Set				: DymsLocalHostPathRetailer		:	@@RetailerDownloadFTPInventory
+	5070 : 	Copy File		: ##DymsLocalHostPathRetailer	:   @@Dyms_StkJrnl_FileNew
+	12780:Else
+	12790:Msg Box	:	Inventory	:	"No newly created stock journals are available.."
+	12800:	End If	
+	13910:Else
+	13920:Msg Box	:	Inventory	 :	"There is an Unprocessed file from FSM. Kindly contact FSM admin to process the pending files"
+	13930:	End If
+	12810:Else
+	12820:Msg Box	:	Inventory	:	"Check your Internet"
+	12830:	End If
+	
+
+;;;;;;;;;;;;; Check Stock Journal Mandatory Values ;;;;;;;;;;;;
+
+[Function: CheckStockMandtrVal]
+	Variable	: MasterIdh		: String
+	Variable	: collectioncnt	: String
+
+	
+	bbb : Set	: collectioncnt:$$NumItems:StkJrnalStatusChkColl
+	jj	:	Log:##collectioncnt
+	1j5	:	Start Progress:(##collectioncnt) : ($$LocaleString:"Checking Mandatory Values..") : "Please wait" : ""
+	000	: Walk Collection:StkJrnalStatusChkColl
+	aaa	: Set	: IsEmptyStkValue	:	No
+	 99 :	Set	: MasterIdh	:	"ID:" + $$String:$mstrId
+	001	: Log:"-------------------------------------------------------------------------------------------"
+    002 : IF : ($$IsEmpty:$Vchnoo) 
+    003 : 	 Log: "Missing Voucher Number Value, Kindly Update for  " + $Vchnoo
+    004 :    Set : IsEmptyStkValue:Yes
+    005 : End If
+	
+	252d:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Missing Mandatory Values of Stock Journal for.."):($Vchnoo)
+	
+    302 : IF : ($$IsEmpty:$ProdAmt) 
+    303 : 	 Log: "Missing Stock Item Amount Value, Kindly Update for  " + $ItemName + "  In  " + $Vchnoo
+    304 :    Set : IsEmptyStkValue:Yes
+    305 : End If
+	
+    102 : IF : ($$IsEmpty:$Ratee) 
+    103 : 	 Log: "Missing Rate Value, Kindly Update for  " + $ItemName + "  In  " + $Vchnoo
+    104 :    Set : IsEmptyStkValue:Yes
+    105 : End If
+	
+    402 : IF : ($$IsEmpty:$Vdate) 
+    403 : 	 Log: "Missing Voucher Date Value, Kindly Update for  " + $Vchnoo
+    404 :    Set : IsEmptyStkValue:Yes
+    405 : End If
+
+	295	: If: ($$IsEmpty:$ttlAmount)
+	297	: 	Log: "Missing Total Amount Value, Kindly Update for  "  +$Vchnoo
+	298	:	Set: IsEmptyStkValue:Yes
+	299	: End If
+	
+	39r	: If: ($$IsEmpty:$Billedqtyy)
+	39s	: 	Log: "Missing Quantity Value, Kindly Update for  "  + $ItemName + "  In  " + $Vchnoo
+	39t	:	Set: IsEmptyStkValue:Yes
+	39u	: End If 
+
+	385	: If: (##IsEmptyStkValue=Yes)
+	386	:	 Modify Object : (Voucher,##MasterIdh).StatusflagStkJrnl.StatusflagStkJrnl : "2"
+	387	: Else
+	388	:	 Modify Object : (Voucher,##MasterIdh).StatusflagStkJrnl.StatusflagStkJrnl : "1"
+	389	: End If
+	
+	100	: End Walk
+	20gr: End Progress
+
+
+[System:Variable]
+	IsEmptyStkValue : No
+	
+[Variable:IsEmptyStkValue]
+	Type	: Logical
+	Default	:	No
+
+[Collection:StkJrnalStatusChkColl]
+
+	Source Collection		:	StkJrnalStatusColl	
+	Fetch		: Vouchernumber
+	Walk		: InventoryentriesIn
+	Compute		: Vchnoo			: $.Vouchernumber
+	Compute		: statusflag		: $..StatusflagStkJrnl
+	Compute		: mstrId			: $.Masterid
+	Compute		: Vdate				: $.Date
+	Compute		: ttlAmount			: $$CollAmtTotal:InventoryentriesIn:$Amount
+	Compute		: ProdAmt			: $Amount
+	Compute		: ItemName			: $StockItemName
+	Compute		: Ratee				: $Rate
+	Compute		: Billedqtyy		: $BilledQty
+	Compute		: Godownname		: $GodownName
+	Filter		: statuesflagfilter2
+	
+;select $Vouchernumber, $Vchnoo, $statusflag, $mstrId, $ItemName, $Vdate, $Ratee, $Billedqtyy, $Godownname, $ProdAmt, $ttlAmount from StkJrnalStatusChkColl
+[System:Formulae]
+	statuesflagfilter2	: $statusflag="1" or $statusflag="2" and $$IsEmpty:$$NumItems:Inventoryentriesout
+

@@ -1,0 +1,99 @@
+		
+[#Menu:GatewayofTally]
+	Add: Key Item: Before: @@locQuit : FSMID Update :U: Call: Dyms_CustomeDownload1;abc
+
+[Function:Dyms_CustomeDownload1]
+
+	Variable: Dyms_CustomerName		:String
+	Variable: Dyms_CustomerId		:String
+	Variable: Dyms_LocalFileNames	:String
+	Variable: Dyms_LocalFileNames1	:String
+	Variable: Dyms_Customer_Count	:Number
+	Variable: Dyms_CountrMsgVAr1	:String
+	Variable: DymsLocalHostPathRetailer,DymsFTPPathRetailer		: String
+	
+	000	: Log: "FSMID Update is running"	
+	010	: MakeDir:".\EXCHANGE\IMPORT"
+	020 : Set: DymsLocalHostPathRetailer:	@@RetailerDownloadDatapath;
+;	030 : Set: DymsFTPPathRetailer      :   $$MakeFTPName:"ftp://34.121.104.138":"fsm_ftp_usr":"@FSM1234":"customer"+"/customer.json"
+ 	030 : Set: DymsFTPPathRetailer		:	$$IsEmptyCollection:Dyms_FTPDirectoryVoucherColl;$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPCustomerFolder
+
+	034	: If:$$IsInternetActive
+	035	: If:NOT $$IsEmptyCollection:Dyms_FTPDirectoryVoucherColl 
+; 	032:	Msg Box	:	DymsFTPPathRetailer	:	##DymsFTPPathRetailer
+	036	: Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:Dyms_FTPDirectoryVoucherColl 
+	037	: Start Progress:(##Dyms_CountrMsgVAr1) : "Downloading Json Files From FTP" : "Please wait" : ""
+ 	040 : Walk Collection	:	Dyms_FTPDirectoryVoucherColl;If:not $$IsFileExists:##DymsFTPPathRetailer
+	056	: Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Downloading.."):($Name)
+  	055 : Copy File		: ##DymsLocalHostPathRetailer	:   @@RetailerDownloadFTP+"/"+$Name;customer.json";@@Retailerxmls
+	
+	060	: End Walk
+	061	: End Progress
+	065	: Walk Collection	:	Dyms_LocalDirectoryVoucherColl
+	068	: Set	:	Dyms_LocalFileNames	:	""
+	070	: Set	:	Dyms_LocalFileNames	:	@@RetailerDownloadDatapath+"\"+$Name
+ ;  45:Msg Box:dd:@@TiaraSFADownRetailerFolder3
+	080	: Set:Dyms_Customer_Count:$$NumItems:DymsJsonCustomerCollection
+	082	: Set:Dyms_LocalFileNames1:$$NumItems:DymsJsonCustomerCollection
+;  	83:	Msg Box	:	Dyms_LocalFileNames	:	##Dyms_LocalFileNames
+;  	84:	Msg Box	:	Dyms_LocalFileNames1	:	##Dyms_LocalFileNames1
+	085	: If:##Dyms_Customer_Count>0
+	088	: Start Batch Post
+	090 : Start Progress: ##Dyms_Customer_Count :"Importing":"Customer"	
+ 
+	100	: Walk Collection:DymsJsonCustomerCollection
+	110	: Set:Dyms_CustomerName			:$$String:$CUSTOMERNAME	
+	111	: Set:Dyms_CustomerId			:$$String:$ID
+
+;	397a	: To Update all the customers FSM ID this changes has been made 
+	113	: If: $$IsEmpty:($Name:Ledger:##Dyms_CustomerName)
+	113a: Msg Box:"WARNING!":##Dyms_CustomerName + "   Customer missing in Tally"
+	114	: Else
+	115	: Log:##Dyms_CustomerName + "  " + ##Dyms_CustomerId ;+ "   " + $$Number:##Dyms_Customer_Count
+	120 : Modify Object : (Ledger,##Dyms_CustomerName).FSMcustid.FSMcustid : ##Dyms_CustomerId
+	125	: Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Updating FSM_ID for Customer "):(##Dyms_CustomerName)
+	127	: End If
+	130 : Increment: Dyms_Customer_Count
+	LocalFormula:	DateTimeFolder	:	$$LocaleString:($$YearOfDate:$$MachineDate)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$MonthOfDate:$$MachineDate):2);+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$DayOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$StringFindAndReplace:($$MachineTime):":":"-")
+;	1050: 	Copy File		: @@RetailerDownloadFTPArch+"/"+@DateTimeFolder+"/"	:   ##Dyms_LocalFileNames;@@RetailerDownloadFTP
+	135 : IF:not $$LastResult
+;	1070 : Delete File:##DymsFTPPathRetailer;
+	140	: Msg Box:"Customer":"Somthing went wrong \n Please Contact Support Team"
+	145 : Else
+	150 : End If
+	155	: End Walk
+	LocalFormula:	DateTimeFolderNN	:	$$LocaleString:($$YearOfDate:$$MachineDate)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$MonthOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$DayOfDate:$$MachineDate):2);+$$LocaleString:"-"+$$LocaleString:($$StringFindAndReplace:($$MachineTime):":":"-")
+	160 : 	Copy File		: @@RetailerDownloadFTPArch+"/"+@DateTimeFolderNN+"/"	:   ##Dyms_LocalFileNames;@@RetailerDownloadFTP
+;	1201:	Copy File:@@RetailerDownloadFTPArch:@@RetailerDownloadFTP+"/"+$Name
+	165 : Delete File:##Dyms_LocalFileNames;@@LocalDeletefile
+	170 : Delete File:@@RetailerDownloadFTP+"/"+$Name
+ 	180 : End Progress
+
+	185	: End Batch Post
+	190 : Else
+;	1332:Msg Box:"Warning":"No Customer"
+	200 : End If
+	205	:	End Walk
+	210 : Else
+	215 : Msg Box	:	Customer	:	"No Data in FTP"
+	220 :	End If
+	225 : Else
+	230 : Msg Box	:	"Warning!":"Check Internet Availability !";Customer	:	"Check your Internet"
+	235 :	End If
+
+
+[Collection:Ledmodify11]
+	Type	: Ledger
+	Child Of: $$GroupSundryDebtors
+	Fetch	: FSMCustid, Name
+	Filter	: abcd
+	
+;select $name, $FSMcustid from Ledmodify11
+
+[System:Formulas]
+	abcd : $FSMCustid=""
+	
+[Function:abc]
+	
+		120 : Modify Object : (Ledger,"MITHUN 7899923146").FSMcustid.FSMcustid : "3781"
+		121	: Log:"Hi"

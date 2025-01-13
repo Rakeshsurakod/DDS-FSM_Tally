@@ -1,0 +1,504 @@
+;;;;;;; Jai Shree Ram ;;;;;;;
+
+[Collection: Dyms_FTPDirectorySupplierColl]
+	
+	Data Source : Directory	: @@RetailerSupplierDownloadFTP     
+	Filter		: Dyms_FilterFiles
+	Format		: $Name, 25
+	Title       : "File Listing"
+	Sub Title	: "File Name", "File Size", "Read Only"
+	
+[Collection: Dyms_DirectorySupplierColl]
+	
+	Data Source : Directory	: @@FSMSupplierfilepatch 
+	Filter		: Dyms_FilterFiles 
+	Format		: $Name, 25
+	Title       : "File Listing"
+	Sub Title	: "File Name", "File Size", "Read Only"
+
+;select $name from Dyms_DirectorySupplierColl
+[Collection	:DymsJsonSupplierCollection]
+	
+	Data Source	: File JSON		: ##Dyms_LocalFileNames
+	JSON Object Path	: "SUPPLIER:1"
+	Fetch	: SUPPLIERNAME
+
+;select $SUPPLIERNAME from DymsJsonSupplierCollection
+
+[Collection:DymsJsonSupplierCollections]
+	
+	Source Collection:DymsJsonSupplierCollection
+	Compute		: SUPPLIERNAME					:	$$String:$SUPPLIERNAME
+	Walk		: ADDRESS
+	Compute		: ADDRESS1						: $ADDRESS1
+	Compute		: ADDRESS2						: $ADDRESS2
+	Compute		: ADDRESS3						: $ADDRESS3
+	Compute		: ADDRESS4						: $ADDRESS4
+	Filter		:Dyms_SupplierFilter
+	
+
+[Function:Dyms_SupplierDownload]
+
+	Variable: Dyms_SupplierName			:String
+	Variable: Dyms_SupplierParent		:String
+	Variable: Dyms_SupplierMobNo		:String	
+	Variable: Dyms_SupplierState		:String	
+	Variable: Dyms_SupplierCountry		:String
+	;Variable: Dyms_GstApplicablefrom	:String
+	Variable: Dyms_Supplier_Gstno		:String
+;	Variable: Dyms_Supplier_Tallygstin  :Logical
+	Variable: Dyms_Supplier_Gsttype		:String
+	Variable: Dyms_Supplier_ContactName :String
+	Variable: Dyms_Supplier_Phoneno		:String
+	Variable: Dyms_Supplier_Pincode		:String
+	Variable: Dyms_Supplier_Address		:String
+	Variable: Dyms_Supplier_Address2	:String
+	Variable: Dyms_Supplier_Address3	:String
+	Variable: Dyms_Supplier_Address4	:String
+	Variable: Dyms_LocalFileNames		:String
+	Variable: Dyms_Supplier_Email		:String
+	Variable: Lednamefun				:String
+	Variable: Dyms_Supplier_Count		:Number
+	Variable: Errorcount				:Number	: 0
+	Variable: Dyms_CountrMsgVAr1		:String
+	Variable: DymsLocalHostPathRetailer	: String
+	Variable: Mesg						:Logical: False
+	
+	000	:	Log: "Supplier is running"	
+	020 :	Set			: DymsLocalHostPathRetailer			:	@@FSMSupplierfilepatch
+	
+	034	:	If:$$IsInternetActive
+;	02  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "Supplier"
+;	03  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : ""
+	035	:	If:NOT $$IsEmptyCollection:Dyms_FTPDirectorySupplierColl 
+	
+;;;;;;;;;;;;;;;;; FTP File Download into local Machine ;;;;;;;;;;;;;;;;;;;;
+	036	:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:Dyms_FTPDirectorySupplierColl 
+	037	:	Start Progress:(##Dyms_CountrMsgVAr1) : "Downloading Json Files From FTP" : "Please Wait" : ""
+ 	040 :	Walk Collection	:	Dyms_FTPDirectorySupplierColl
+	056	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Downloading.."):($Name)
+  	055 : 	Copy File		: ##DymsLocalHostPathRetailer	:   @@RetailerSupplierDownloadFTP+"/"+$Name
+	060	:	End Walk
+	061	:	End Progress
+	
+	065	: Walk Collection	:	Dyms_DirectorySupplierColl
+	068	:	Set	:	Dyms_LocalFileNames	:	""
+	070	:	Set	:	Dyms_LocalFileNames	:	@@FSMSupplierfilepatch+"\"+$Name
+	80	:	Set	:   Dyms_Supplier_Count :   $$NumItems:DymsJsonSupplierCollection
+
+	85	: If:##Dyms_Supplier_Count>0
+	88	: Start Batch Post:100
+	
+;;;;;;;;;;;;;;;; Supplier Log File ;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+	121	: 	Set File Log On
+	122	: 	OPEN FILE :@@FSMSupplierLogfilepatch:Text:Write 
+	123	:	Write File Line	: "==========================================================================="
+	124	: 	Write File Line	: "Total Supplier Ledger to Import - "+$$String:(##Dyms_Supplier_Count)+" On "+$$String:($$MachineDate)+"-"+$$String:($$MachineTime)
+	125a:	Close Target File
+	126	:	Set File Log Off
+	
+	90 	: Start Progress: ##Dyms_Supplier_Count :"Importing":"Supplier Ledgers"	
+	
+	110s : Set:Dyms_SupplierName		:""
+	111a : Set:Dyms_SupplierParent		:""
+	
+	100 : Walk Collection:DymsJsonSupplierCollection
+	110 : Set : Dyms_SupplierName			:$SUPPLIERNAME	
+	111 : Set : Dyms_SupplierParent			:"Sundry Creditors";$SupplierGROUP
+	115 : Set : Dyms_SupplierMobNo			:$MOBILENO				
+	120 : Set : Dyms_SupplierState			:$STATE
+	125 : Set : Dyms_SupplierCountry		:$COUNTRY				
+;	130 : Set : Dyms_GstApplicablefrom		:$GSTAPPLICABLEFROM
+	133 : Set : Dyms_Supplier_Email			:$EMAIL
+	135 : Set : Dyms_Supplier_Gstno			:$GSTNO				
+	140 : Set : Dyms_Supplier_Gsttype		:$GSTTYPE				
+	145 : Set : Dyms_Supplier_ContactName	:$CONTACTNAME			
+	150 : Set : Dyms_Supplier_Phoneno		:$PHONENO		
+	155 : Set : Dyms_Supplier_Pincode		:$PINCODE
+	170	: Set : Lednamefun					:$$IsEmpty:($Name:Ledger:##Dyms_SupplierName)
+	
+	158a : Set : Dyms_Supplier_Address		:""
+	159b : Set : Dyms_Supplier_Address2		:""
+	160c : Set : Dyms_Supplier_Address3		:""
+	161d : Set : Dyms_Supplier_Address4		:""
+	
+	156 : Walk Collection:DymsJsonSupplierCollections
+	158 : Set : Dyms_Supplier_Address		:$ADDRESS1
+	159 : Set : Dyms_Supplier_Address2		:$ADDRESS2
+	160 : Set : Dyms_Supplier_Address3		:$ADDRESS3
+	161 : Set : Dyms_Supplier_Address4		:$ADDRESS4
+	
+	;207	: Set:Dyms_Supplier_Tallygstin:$$NumItems:LedgerGSTINCheck>0
+;	390	: If: not (##Lednamefun and ##Dyms_Supplier_Tallygstin)
+	398 :   Do If    : ##Lednamefun      : New Object        : Ledger
+    400 :   Do If    : Not ##Lednamefun  : New Object        : Ledger:##Dyms_SupplierName    :Yes
+	418	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Importing Supplier  "):(##Dyms_SupplierName)
+	401	:	Set Value				    : 	Name			        : $$String:##Dyms_SupplierName
+	402 :	Set Value					:   Parent                  : If Not $$IsEmpty:##Dyms_SupplierParent Then ##Dyms_SupplierParent Else $Parent:Ledger:##Dyms_SupplierName
+	405	:   Set Value                   :   IsBillWiseOn            : Yes
+ 
+	iii	:	If    : not ##Lednamefun
+	407B:	Walk Collection:ListofDymcsSupplierUpdates
+	407C:	Delete CollectionObject:Address:1:Yes
+	407D:	End Walk
+	jjjj:	End If
+
+	408	: If: Not $$Isempty:##Dyms_Supplier_Address
+	410	:	Insert Collection Object	:	ADDRESS
+	412	:	Set Value					: 	ADDRESS			        :	$$String:##Dyms_Supplier_Address
+	414	:	Set Target					:	..
+	415	: End If
+		
+	420	: If: Not $$Isempty:##Dyms_Supplier_Address2
+	427	:	Insert Collection Object	:	ADDRESS
+	430	:	Set Value					: 	ADDRESS			        :	$$String:##Dyms_Supplier_Address2
+	435	:	Set Target					:	..
+	436	: End If
+
+	438	: If: Not $$Isempty:##Dyms_Supplier_Address3
+	439	:	Insert Collection Object	:	ADDRESS
+	440	:	Set Value					: 	ADDRESS			        :	$$String:##Dyms_Supplier_Address3
+	441	:	Set Target					:	..
+	442	: End If
+
+
+	444	: If: Not $$Isempty:##Dyms_Supplier_Address4
+	445	:	Insert Collection Object	:	ADDRESS
+	446	:	Set Value					: 	ADDRESS			        :	$$String:##Dyms_Supplier_Address4
+	447	:	Set Target					:	..
+	448	: End If
+
+	496	:	Set Value					: 	CountryofResidence		 :	##Dyms_SupplierCountry
+	500	:	Set Value					: 	LEDSTATENAME			 :	##Dyms_SupplierState
+	505	:	Set Value					: 	PinCode					 :	##Dyms_Supplier_Pincode
+	525	:	Set Value					:	LedgerContact			 :	##Dyms_Supplier_ContactName
+	530	:	Set Value					:	LedgerPhone				 :	##Dyms_Supplier_Phoneno
+	535	:	Set Value					:	Email					 :	##Dyms_Supplier_Email
+	540	:	Set Value					:	LedgerMobile			 :	##Dyms_SupplierMobNo
+	542	:	Set Value					:	GSTREGISTRATIONTYPE	 	 :	##Dyms_Supplier_Gsttype
+	548	:	Set Value					:	PartyGSTIN			 	 :	##Dyms_Supplier_Gstno
+
+	1000:   Save Target
+;	1003: Set:Mesg:True
+;	1005: End If
+;	1010: Do If:not ##Mesg : Log:"Warning! Duplicate GSTIN Detected"
+	1020:	End Walk
+	
+;;;;;;;;;; Log File ;;;;;;;;;;;
+	1060 : IF:not $$LastResult
+	5004 :   Set File Log On
+	5005 :   OPEN FILE :@@FSMSupplierLogfilepatch:Text:Write 
+	5010 :	 Write File Line	: $$String:($$LastError)
+	5020 :	 Write File Line	: $$String:"Error From :"+$$String:##Dyms_SupplierName
+	5030 :	 Set File Log Off
+	5040 :	 Close Target File
+	1040 : Increment: Errorcount
+	1188 : End If
+	1200 : End Walk
+	
+;;;;;;;;;;; Error Messages ;;;;;;;;;;;;;
+	LocalFormula:	DateTimeFolderNN	:	$$LocaleString:($$YearOfDate:$$MachineDate)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$MonthOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$ZeroFill:($$DayOfDate:$$MachineDate):2)+$$LocaleString:"-"+$$LocaleString:($$StringFindAndReplace:($$MachineTime):":":"-")
+	9191 : If:##Errorcount=0
+	1201 : 	Copy File		: @@SupplierArchiveFldr + "\" + @DateTimeFolderNN + "\"	:   ##Dyms_LocalFileNames
+	1202 :  Delete File:##Dyms_LocalFileNames
+	1201F: 	Copy File		: @@RetailerSupplierDownloadArch+"/"+@DateTimeFolderNN+"/"	:   @@RetailerSupplierDownloadFTP+"/"+$Name
+	1205F: 	Delete File:   @@RetailerSupplierDownloadFTP+"/"+$Name
+	1210 :	Log: "Status : Process Completed! Supplier Ledgers Imported Successfully!! "
+	1205 : Else
+	1219 :	Log: "Status : Error While Importing!! Please Refer Log File  " +$$LocaleString:@@FSMSupplierLogfilepatch
+	1040a: Decrement: Errorcount
+	ueue : End If
+	
+ 	1288 : End Progress
+	1330 : End Batch Post
+	1331 : Else
+;	1332 : Msg Box:"Warning":"No Supplier"
+	1400 : End If
+	1410 : End Walk
+	
+	1278 :Else
+	1279 :Log	:"No Data File In Supplier Folder"
+	1280 :	End If
+	1281 :Else
+	1282 :Msg Box	:"Warning!":"Check Internet Availability!!"
+	1283 :	End If
+	1285 : Return
+	
+[Collection:ListofDymcsSupplierUpdate]
+	
+	Type	: Ledger
+	Child Of: $$GroupSundryCreditors
+	Fetch	: Name,Address
+
+[Collection:ListofDymcsSupplierUpdates]
+	
+	Source Collection	: ListofDymcsSupplierUpdate
+	Compute				: Name			: $Name
+	Walk				: Address
+	Filter				: AddressNamFilter1
+
+[System:Formulae]
+	AddressNamFilter1 	: $Name=##Dyms_SupplierName
+	Dyms_SupplierFilter	: $SUPPLIERNAME=##Dyms_SupplierName
+	SupplierArchiveFldr	: ($$StringFindAndReplace:@@FSMSupplierDownloadArch:'/':'\')
+;	Dyms_FilesDate		: $Name <= $$String:##YYYYMMDD	;;;;;;;;;;; 1 Month Filter
+;	Dyms_FilesDate2		: $Name <= $$String:##YYYYMMDD2 and $Name!=$$String:"..";;;;;;;;;;;; 2 Months Filter
+;	GSTINcheck			: $Partygstin= (If ##Dyms_Supplier_Gstno="" then No Else ##Dyms_Supplier_Gstno)
+	
+	RetailerSupplierDownloadFTP	:$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@FSMSupplierFolder
+	RetailerSupplierDownloadArch:$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@FSMSupplierFolderArc
+	FSMSupplierfilepatch		: @@FSMDatapath + "\" + @@FSMSupplierFolder
+	FSMSupplierFolder         	: $FTPSupplierDownload:Company:##SVCurrentCompany
+	FSMSupplierLogfilepatch		: @@FSMSupplierfilepatch + "\supplierlog.txt"
+	FSMSupplierDownloadArch		: @@FSMDatapath + "\" + @@FSMSupplierFolderArc
+	FSMSupplierFolderArc       	: $SupplierArchiveFolder:Company:##SVCurrentCompany
+	
+
+
+;;;;;;;;;;;;;;; Supplier Upload ;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+[Function:Dyms_SupplierUpload]
+	
+	Variable	: Find1stStr	:	String
+	Variable	: FindReplaceStr	:	String
+	Variable	: DymsLocalHostPathRetailer,Dyms_CountrMsgVAr2: String
+	Variable	: TempDSRNAme,DymsFTPPathLedgerCode :String
+	Variable	: Dyms_CountrMsgVAr1	: Number
+	Variable	: Dyms_Address1,Dyms_Address2,Dyms_Address3,Dyms_Address4:String
+
+	000	: 	Log: "Supplier Upload Running"	
+ 	002 :	Set			: DymsFTPPathLedgerCode			: @@SupplierUploadpath
+	003	:	If:$$IsInternetActive
+;	02  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "TallySupplier"
+;	03  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : ""
+	057	:	If:not $$IsFileExists:(@@SupplierUploadpath+"/TallySupplier.json")
+	007	:	Call:SupplierMandatoryChk
+	04	:	Set: Dyms_CountrMsgVAr1 :$$NumItems:ListofDymcsSupplier
+	004	:	If:NOT $$IsEmpty:##Dyms_CountrMsgVAr1
+	014	:	Delete File	:	@@Dyms_Item_Supplierup
+	005	: 	Set File Log On
+	006	: 	OPEN FILE :@@Dyms_Item_Supplierup:Text:Write :ASCII
+	020	:	Truncate File
+	040	:	Write File Line	: "{"
+	100	:	Write File Line	: '"' + "SUPPLIER" + '"' + ": " + "[" 
+	127	:	Set	:	Dyms_CountrMsgVAr2	:	$$NumItems:ListofDymcsSupplier
+	128	:	Start Progress:(##Dyms_CountrMsgVAr2) : ($$LocaleString:"Uploading Supplier..") : "Please wait" : ""
+	201	:	Walk Collection:ListofDymcsSupplier
+	202	:	Start Batch Post:100
+	204	: 	Write File Line	: "{"
+	206	:	Set	:	Find1stStr	:	$$StringFindAndReplace:$Name:"\":"\\'"
+	210	:	Write File Line	: '"' + "ID" + '"' + ": " + '"' + $$String:$Masterid + '"' + "," 
+	220	:	Write File Line	: '"' + "SUPPLIERNAME" + '"' + ": " + '"' + $$StringFindAndReplace:##Find1stStr:'"':'\"' + '"' + ","
+	230	:	Write File Line	: '"' + "PARTYMOBILENO" + '"' + ": " + '"' + $Ledgermobile + '"' + ","
+	240	:	Write File Line	: '"' + "PARTYSTATE" + '"' + ": " + '"' + $$getGSTStateCode:$LedStatename + '"' + ","
+	242	:	Write File Line	: '"' + "COUNTRY" + '"' + ": " + '"' + "India" + '"' + ","
+	250	:	Write File Line	: '"' + "EMAIL" + '"' + ": " + '"' + $Email + '"' + ","
+	252	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Uploading Supplier for.."):($Name)
+	270A	:	Write File Line	: '"' + "GSTNO"   + '"' + ": " + '"' + $PartyGSTIN + '"' + ","
+	270B	:	Write File Line	: '"' + "SUPPLIERTYPE" + '"' + ": " + '"' + (If $$IsEmpty:$PartyGSTIN Then "Individual" else "Company")+ '"' + ","
+	270C	:	Write File Line	: '"' + "PANNO"   + '"' + ": " + '"' + $IncomeTaxNumber + '"' + ","
+	270D	:	Write File Line	: '"' + "CONTACTNAME" + '"' + ": " + '"' + $LedgerContact + '"' + ","
+	270E	:	Write File Line	: '"' + "PHONENO" + '"' + ": " + '"' + $LedgerPhone + '"' + ","
+	270F	:	Write File Line	: '"' + "PINCODE" + '"' + ": " + '"' + $PinCode + '"' + ","
+	101		:	Set	:	Dyms_Address1	:	$$StringFindAndReplace:$Address1:'"':'\"'
+	102		:	Set	:	Dyms_Address2	:	$$StringFindAndReplace:$Address2:'"':'\"'
+	103		:	Set	:	Dyms_Address3	:	$$StringFindAndReplace:$Address3:'"':'\"'
+	104		:	Set	:	Dyms_Address4	:	$$StringFindAndReplace:$Address4:'"':'\"'
+	270G	: 	Write File Line	: '"' + "ADDRESS1" + '"' + ": " + '"' + (If $$Isempty:##Dyms_Address1 then "" else ##Dyms_Address1) + '"' + ","
+	270H	:	Write File Line	: '"' + "ADDRESS2" + '"' + ": " + '"' + (If $$Isempty:##Dyms_Address2 then "" else ##Dyms_Address2) + '"' + ","
+	270I	:	Write File Line	: '"' + "ADDRESS3" + '"' + ": " + '"' + (If $$Isempty:##Dyms_Address3 then "" else ##Dyms_Address3) + '"' + ","
+	270J	:	Write File Line	: '"' + "ADDRESS4" + '"' + ": " + '"' + (If $$Isempty:##Dyms_Address4 then "" else ##Dyms_Address4)	+ '"' 
+	105		:	Set	:	Dyms_Address1	: "" 
+	106		:	Set	:	Dyms_Address2	: ""
+	107		:	Set	:	Dyms_Address3	: ""
+	108		:	Set	:	Dyms_Address4	: ""
+
+	271		: If: not $$IsLastObj:$Name
+	272		:	Write File Line	: "},"
+	275		: End If
+	276		: End Walk
+	
+	281		: If:$$IsLastObj:$NAme
+	292		: 	Write File Line	: "}"
+	293		: Else
+	293A	: 	Write File Line	: "},"
+	294		: End If
+	;294A	: End Walk
+	295		:	End Progress
+	j2j2	: End Batch Post
+	296		: Write File Line	: "],"
+	297		: Write File Line	: '"COUNT": ' + '"' + ##Dyms_CountrMsgVAr2 + '"' 
+	298		: Write File Line	: "}"
+	
+	299		: Call: unflaggingsupplier
+	
+	5030	:	Set File Log Off
+	5040	:	Close Target File
+	5060 	:	Set				: DymsLocalHostPathRetailer		:	##DymsFTPPathLedgerCode;@@RetailerDownloadFTPStock
+	5070 	: 	Copy File		: ##DymsLocalHostPathRetailer	:   @@Dyms_Item_Supplierup;@@Dyms_Item_Main+"\Product.json"
+	
+	12780:Else
+	12790:Msg Box	:	Supplier	:	"There is no modification or newly created Ledgers available."
+	12800:	End If
+	13910:Else
+	13920:Msg Box	:	Supplier :	"There is an Unprocessed file from FSM. Kindly contact FSM admin to process the pending files"
+	13930:	End If
+	12810:Else
+	12820:Msg Box	:	Supplier :	"Check your Internet"
+	12830:	End If
+	
+[Collection:ListofDymcsSupplier]
+	
+	Type	: Ledger
+	Child Of: $$GroupSundryCreditors
+	Belongs To: Yes
+	Fetch	: Masterid,Name,Parent,LedgerMststatusflag,Ledgermobile,LedStatename,CountryofResidence,LedgerContact,FSMCustid
+	Fetch	: LedgerPhone,PinCode,GSTREGISTRATIONTYPE,PartyGSTIN,Email
+	Filter	: UploadLedgerStatussup
+	Compute	: Address1	: $(Ledger, $Name).Address[1].Address
+	Compute	: Address2	: $(Ledger, $Name).Address[2].Address
+	Compute	: Address3	: $(Ledger, $Name).Address[3].Address
+	Compute : Address4 	: $(Ledger, $Name).Address[4].Address
+
+;select $name, $Parent, $Address1, $Address2, $masterid, $LedgerMststatusflag,$FSMCustid from ListofDymcsSupplier
+[System:Formula]
+	UploadLedgerStatussup		: $LedgerMststatusflag="1" ;and $Parent="Sundry Creditors"
+	Dyms_Item_Supplierup 		: @@Dyms_Item_Main+"\TallySupplier.json"	
+	SupplierUploadpath	 		: $$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPSupplierUplodfoldr
+	DymcsFTPSupplierUplodfoldr	: $SupplierUploadFolder:Company:##SVCurrentCompany
+	unflaggingg			 		: $$numitems:ListofDymcsSupplier
+	
+[Function:unflaggingsupplier]
+	
+	301		: If: @@unflaggingg > 0;$$numitems:ListofDymcsSupplier >0 
+	05		: Start Progress:(@@unflaggingg) : ($$LocaleString:"Unflagging Supplier..") : "Please wait" : ""
+	305		: Start Batch Post
+	300		: Walk Collection	:	ListofDymcsSupplier
+	25		: Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:""):($Name)
+	310		: New Object	:	Ledger	:	$Name	:	Yes
+	320		: Set Value		:	LedgerMststatusflag	:	"0"
+	321		: Set Value		:	LedgerMststatusflag	:	"0"
+	330		: Accept
+	500		: End Walk
+	505		: End Batch Post
+	193		: End Progress
+	510		: End If
+
+;;;;;;;;;;;;;;;;;;;;; Supplier Mandatory Check ;;;;;;;;;;;;;;;;
+
+[Function:SupplierMandatoryChk]
+	
+	Variable	: MasterIdh		: String
+	Variable	: collectioncnt	: Number
+
+	
+	bbb : Set	: collectioncnt:$$NumItems:ListofDymsSupplierChk
+	iii	:	If: ##collectioncnt>0
+	1j5	:	Start Progress:(##collectioncnt) : ($$LocaleString:"Checking Mandatory Values..") : "Please wait" : ""
+	000	: Walk Collection:ListofDymsSupplierChk
+	aaa	: Set	: IsEmptySuplrValue	:	No
+
+	001	: Log:"-------------------------------------------------------------------------------------------"
+    002 : IF : ($$IsEmpty:$Name) 
+    003 : 	 Log: "Missing Supplier Ledger Name Value, Kindly Update for  " + $Name
+    004 :    Set : IsEmptySuplrValue:Yes
+    005 : End If
+	
+	252d:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Missing Mandatory Values of Supplier Ledger for.."):($Name)
+	
+    302 : IF : (not $$IsEqual:$Parent:"Sundry Creditors") 
+    303 : 	 Log: "Ledger Parent Value not belongs to Sundry Creditors, Kindly Update for  " + $Name
+    304 :    Set : IsEmptySuplrValue:Yes
+    305 : End If
+	
+    102 : IF : ($$IsEmpty:$Ledgermobile)
+    103 : 	 Log: "Missing Mobile Number, Kindly Update for  " + $Name
+    104 :    Set : IsEmptySuplrValue:Yes
+    105 : End If
+	
+    162 : IF : (not $$IsEmpty:$Ledgermobile and ($$StringLength:$Ledgermobile>10))
+    163 : 	 Log: "Missing Mobile Number, Kindly Update for  " + $Name
+    164 :    Set : IsEmptyCstmrValue:Yes
+    165 : End If
+	
+    132 : IF : ($$IsEmpty:$PartyGSTIN)
+    133 : 	 Log: "Missing Party GSTIN Value, Kindly Update for  " + $Name
+    134 :    Set : IsEmptySuplrValue:Yes
+    135 : End If
+	
+    142 : IF : ( Not $$IsEmpty:$PartyGSTIN and ($$StringLength:$PartyGSTIN<15 or $$StringLength:$PartyGSTIN>15))
+    143 : 	 Log: "Party GSTIN Value is Not Valid, Kindly Update for  " + $Name
+    144 :    Set : IsEmptySuplrValue:Yes
+    145 : End If
+	
+    402 : IF : ($$IsEmpty:$Address2) 
+    403 : 	 Log: "Missing Address line 2 Value, Kindly Update for  " + $Name
+    404 :    Set : IsEmptySuplrValue:Yes
+    405 : End If
+
+    412 : IF : ($$IsEmpty:$Address3) 
+    413 : 	 Log: "Missing Address line 3 Value, Kindly Update for  " + $Name
+    414 :    Set : IsEmptySuplrValue:Yes
+    415 : End If
+
+	195	: If: ((not $$IsEmpty:$Ledgermobile )and $$StringLength:$Ledgermobile<10)
+	197	: 	Log: "Mobile Number must have 10 digits, Kindly Update for  " +$Name
+	198	:	Set: IsEmptySuplrValue:Yes
+	199	: End If
+	
+	295	: If: ($$IsEmpty:$Address1)
+	297	: 	Log: "Missing Address line 1 Value, Kindly Update for  " + $Name 
+	298	:	Set: IsEmptySuplrValue:Yes
+	299	: End If
+	
+	39r	: If: ($$IsEmpty:$LedStatename)
+	39s	: 	Log: "Missing State Name Value, Kindly Update for  "  +$Name
+	39t	:	Set: IsEmptySuplrValue:Yes
+	39u	: End If 
+
+	1010: If: ($$IsEmpty:$PinCode)
+	1015: 	Log: "Missing Pincode Value, Kindly Update for  "  +$Name
+	1020:	Set: IsEmptySuplrValue:Yes
+	1025: End If 
+	
+	1210: If: ((Not $$IsEmpty:$PinCode) and $$StringLength:$PinCode<6 or $$StringLength:$PinCode>6)
+	1215: 	Log: "Pincode Value is not correct, Kindly Update for  "  +$Name
+	1220:	Set: IsEmptySuplrValue:Yes
+	1225: End If 
+	
+
+	385	: If: (##IsEmptySuplrValue=Yes)
+	386	:	 Modify Object : (Ledger,$Name).LedgerMststatusflag.LedgerMststatusflag : "2"
+	387	: Else
+	388	:	 Modify Object : (Ledger,$Name).LedgerMststatusflag.LedgerMststatusflag : "1"
+	389	: End If
+		
+	100	: End Walk
+	20gr: End Progress
+	uuuu: End If
+
+[System:Variable]
+	IsEmptySuplrValue : No
+	
+[Variable:IsEmptySuplrValue]
+	Type	: Logical
+	Default	:	No
+
+[Collection:ListofDymsSupplierChk]
+	
+	Type	: Ledger
+	Child Of: $$GroupSundryCreditors
+	Belongs To:Yes
+	Fetch	: Masterid,Name,Parent,LedgerMststatusflag,Ledgermobile,LedStatename,CountryofResidence,LedgerContact,FSMCustid
+	Fetch	: LedgerPhone,PinCode,GSTREGISTRATIONTYPE,PartyGSTIN,Email, Gstnatureofsupply
+	Filter	: UploadSupplirStatuschk
+	Compute	: Address1	: $Address[1].Address
+	Compute	: Address2	: $Address[2].Address
+	Compute	: Address3	: $Address[3].Address
+	Compute : Address4 	: $Address[4].Address
+
+;select $name, $Parent, $Address1, $Address2, $masterid, $LedgerMststatusflag, $PartyGSTIN, $GSTREGISTRATIONTYPE, $CountryofResidence, $Gstnatureofsupply from ListofDymsSupplierChk
+
+[System:Formula]
+UploadSupplirStatuschk		: $LedgerMststatusflag="1"  or $LedgerMststatusflag="2"  

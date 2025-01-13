@@ -1,0 +1,560 @@
+ [#Part: MST Parent]
+  Option							: 	ProductGroupStatus1	: $$IsStockItem
+	
+[!Part:ProductGroupStatus1]
+   Add								: 	Line:After: MST Parent: Product Belogs Status 
+;  Local								:	Line	:	Mazeworks FMCG Belogs Centroid Status	:	Local	:		Field	:	Medium Prompt	:	Invisible: if $$IsEmpty:##SStockGroup then yes else if $$IsEmpty:##SStockCategory then yes else no
+;  Local								:	Line	:	Mazeworks FMCG Belogs Centroid Status	:	Local	:		Field	:	Short Prompt	:	Invisible: if $$IsEmpty:##SStockGroup then yes else if $$IsEmpty:##SStockCategory then yes else no
+
+[Line:Product Belogs Status]
+	
+	Field						: Long Prompt,Product Belogs StatusN
+	Local						: Field:Long Prompt:Set as:" Status :"
+	Invisible					: Yes;;Changed by deepika
+	
+ [Field:Product Belogs StatusN]
+	 
+	Use							: Name Field
+	Set as						: $StockPBelogsStatus
+	Storage						: StockPBelogsStatus
+	Set Always					: Yes
+
+[Collection: TSPL Smp DSR Name ]
+
+	Type		: Stockitem
+	Fetch 		: Name;,OnlyAlias
+;	Filter		: IVYDSRStatusCostCentre
+
+;;;;;;;;;;; Inventory Product One time ;;;;;;;;;;;;;;;;
+[Function:Dyms_ProductUpload]
+	Variable:Temp:Number	:	0
+	Variable: SequenceNo	: Number : 0
+	Variable: TotalAmount	: Number
+	Variable:Find1stStr	:	String
+	Variable:FindReplaceStr	:	String
+	Variable:DymsLocalHostPathRetailer,DymsFTPPathRetailer			: String
+	Variable:TempDSRNAme,DymsFTPPathProductCode						:String
+	Variable:Dyms_CountrMsgVAr1,Dyms_CountrMsgVAr2,Dyms_CountrMsgVAr3:String
+	Variable:Dyms_CountrMsgVAr4,Dyms_CountrMsgVAr5,Dyms_CountrMsgVAr6:String
+	;000 : Set :TempDSRNAme: "D:\Personal\Vel\Code\Coding\TDL\DymsDigital"+"\productinventorys.json"
+	; 000			: If	: $$IsFileExists:##TempDSRNAme
+	;001			: Delete File	: ##TempDSRNAme
+	;002			: End If
+	000	:	Log: "Inventory Upload Running"
+	
+	002 :	Set			: DymsFTPPathProductCode			:$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPCustomerInvenFolder+"/productinventorys.json"
+	003	:	If:$$IsInternetActive
+	02  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "Inventory"
+	03  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : "All"
+	08	:	Call:CheckProductInvMandtrVal
+	004	:	If:NOT $$IsEmptyCollection:ListofDymcsProductNew;ListofDymcsInv 
+	004a:	Delete File	:	@@Dyms_Item_FileNew
+	005	: Set File Log On
+	006	: OPEN FILE :@@Dyms_Item_FileNew:Text:Write :ASCII
+	020			: Truncate File
+	040			: Write File Line	: "{"
+	100			: Write File Line	: '"' + "STOCKENTRY" + '"' + ": " + "[" 
+	127	:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:ListofDymcsProductNew ;ListofDymcsInv
+	128	:	Start Progress:(##Dyms_CountrMsgVAr1) : ($$LocaleString:"Upload Inventory..") : "Please wait" : ""
+
+	264			: Write File Line	: "{"
+	260			: Write File Line	: '"' + "INVENTORY" + '"' + ": " + "[" 
+
+	201	: Walk Collection:ListofDymcsProductNew;ListofDymcsInv
+	mmm : set : TotalAmount: ##TotalAmount + $$Number:$ClosingValue1
+	270C: 	Increment:Temp
+	204			: Write File Line	: "{"
+	206	:	Set	:	Find1stStr	:	 $$StringFindAndReplace:$Name:"\":"\\'"
+	210			: Write File Line	: '"' + "PRODUCT_NAME" + '"' + ": " + '"' +$$StringFindAndReplace:##Find1stStr:'"':'\"' + '"' + ","
+	220			: Write File Line	: '"' + "PRODUCT_CODE" + '"' + ": " + '"' +$$StringFindAndReplace:##Find1stStr:'"':'\"' + '"' + ",";($$ReptField:Name:2:StockItem:$Name):"\":"\\" + '"' + ","
+	230			: Write File Line	: '"' + "PRODUCT_QTY" + '"' + ": " + '"' + $$String:$ClosingBalance1:"NoSymbol"  + '"' + ","
+	240			: Write File Line	: '"' + "PRODUCT_COST" + '"' + ": " + '"' + $$StringWordEx:($$String:$ClosingRate:"NoComma"):"/":1 + '"' + ","
+	250			: Write File Line	: '"' + "PRODUCT_TOTALCOST" + '"' + ": " + '"' + $$String:($$StringWordEx:($$String:$ClosingValue1:"NoComma"):"/":1):"NoComma" + '"' 
+	252:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Uploading Inventory for.."):($Name)
+	
+	281	:If:$$IsLastObj:$Name or ##Temp=10
+	292			: Write File Line	: "}"
+	293	:Else
+	293A		: Write File Line	: "},"
+	294	:End If
+	
+	hhd	: 	If:##Temp=10 and Not $$IsLastObj:$Name
+	iee: Increment:SequenceNo
+	2721		: Write File Line	: "],"
+	270r		: Write File Line	: '"' + "ENTRYNUMBER" + '"' + ": " + '"' +$$String:"Inv00"+($$String:##SequenceNo) + '"' + ","
+	270h		: Write File Line	: '"' + "DATE" + '"' + ": " + '"' + $$String:$$MachineDate + '"' + ","
+	270g		: Write File Line	: '"' + "TOTALAMOUNT" + '"' + ": " + '"' +$$StringWordEx:($$String:##TotalAmount):"/":1 + '"' ;+ ","
+	2741		: Write File Line	: "},"
+	264g		: Write File Line	: "{"
+	260g		: Write File Line	: '"' + "INVENTORY" + '"' + ": " + "[" 
+	jj	:	Set: temp	: 0
+	ie	:	Set: TotalAmount	:	0
+	jd	: 	End If
+	
+	
+	271	:If:$$IsLastObj:$Name and not ##Temp=10
+	27h2	: Increment:SequenceNo
+	251		: Write File Line	: "],"
+	25r		: Write File Line	: '"' + "ENTRYNUMBER" + '"' + ": " + '"' +$$String:"Inv00"+($$String:##SequenceNo) + '"' + ","
+	25h		: Write File Line	: '"' + "DATE" + '"' + ": " + '"' + $$String:$$MachineDate + '"' + ","
+	25g		: Write File Line	: '"' + "TOTALAMOUNT" + '"' + ": " + '"' +$$StringWordEx:($$String:##TotalAmount):"/":1 + '"'; + ","
+	274	:End If
+	
+	671	:If:$$IsLastObj:$Name and ##Temp=10
+	67h2	: Increment:SequenceNo
+	651		: Write File Line	: "],"
+	65r		: Write File Line	: '"' + "ENTRYNUMBER" + '"' + ": " + '"' +$$String:"Inv00"+($$String:##SequenceNo) + '"' + ","
+	65h		: Write File Line	: '"' + "DATE" + '"' + ": " + '"' + $$String:$$MachineDate + '"' + ","
+	65g		: Write File Line	: '"' + "TOTALAMOUNT" + '"' + ": " + '"' +$$StringWordEx:($$String:##TotalAmount):"/":1 + '"'; + ","
+	674	:End If
+	69A:End Walk
+	
+	295	:	End Progress
+
+	272d		: Write File Line	: "}"
+	296			: Write File Line	: "],"
+	297:	Write File Line	: '"COUNT": ' + '"' +$$String:##SequenceNo + '"' 
+	298		: Write File Line	: "}"
+	300	:	Walk Collection	:	ListofDymcsProductNew
+	310	:	New Object	:	StockItem	:	$NAme	:	Yes
+	320	:	Set Value	:	StockPBelogsStatus	:	"0"
+	330	:	Accept Alter
+	500	:	End Walk
+	5030:	Set File Log Off
+	5040:	Close Target File
+	5060 :	Set				: DymsLocalHostPathRetailer		:	@@RetailerDownloadFTPInventory
+	5070 : 	Copy File		: ##DymsLocalHostPathRetailer	:   @@Dyms_Item_FileNew;@@Dyms_Item_Main+"\Product.json"
+	12780:Else
+	12790:Msg Box	:	Inventory	:	"No product modifications are available"
+	12800:	End If
+	12810:Else
+	12820:Msg Box	:	Inventory	:	"Check your Internet"
+	12830:	End If
+	
+
+
+;;;;;;;;;;;;; Check Product Mandatory Values ;;;;;;;;;;;;
+
+[Function: CheckProductInvMandtrVal]
+	Variable	: MasterIdh		: String
+	Variable	: collectioncnt	: Number
+
+	
+	bbb : Set	: collectioncnt:$$NumItems:ListofDymcsProductChk
+	iii	:	If: ##collectioncnt>0
+	1j5	:	Start Progress:(##collectioncnt) : ($$LocaleString:"Checking Mandatory Values..") : "Please wait" : ""
+	000	: Walk Collection:ListofDymcsProductChk
+	aaa	: Set	: IsEmptyProdInvValue	:	No
+
+	001	: Log:"-------------------------------------------------------------------------------------------"
+    002 : IF : ($$IsEmpty:$Name) 
+    003 : 	 Log: "Missing Stock Item Name Value, Kindly Update for  " + $Name
+    004 :    Set : IsEmptyProdInvValue:Yes
+    005 : End If
+	
+	252d:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Missing Mandatory Values of Stock Item for.."):($Name)
+	
+    302 : IF : ($$IsEqual:$Closingbalance1:"0") 
+    303 : 	 Log: "Missing Closing Balance Value, Kindly Update for  " + $Name
+    304 :    Set : IsEmptyProdInvValue:Yes
+    305 : End If
+	
+    102 : IF : ($$IsEmpty:$ClosingRate) 
+    103 : 	 Log: "Missing Closing Rate Value, Kindly Update for  " + $Name
+    104 :    Set : IsEmptyProdInvValue:Yes
+    105 : End If
+	
+	295	: If: ($$IsEmpty:$ClosingValue1)
+	297	: 	Log: "Missing Closing Value, Kindly Update for  " + $Name
+	298	:	Set: IsEmptyProdInvValue:Yes
+	299	: End If
+	
+
+	385	: If: (##IsEmptyProdInvValue=Yes)
+	386	:	 Modify Object : (StockItem,$Name).StockPBelogsStatus.StockPBelogsStatus : "2"
+	387	: Else
+	388	:	 Modify Object : (StockItem,$Name).StockPBelogsStatus.StockPBelogsStatus : "1"
+	389	: End If
+		
+	100	: End Walk
+	20gr: End Progress
+	uuuu: End If
+
+[System:Variable]
+	IsEmptyProdInvValue : No
+	
+[Variable:IsEmptyProdInvValue]
+	Type	: Logical
+	Default	:	No
+	
+[Collection:ListofDymcsProductChk]
+	
+Type:STockitem
+Fetch:Name,ClosingRate,StockPBelogsStatus
+Filter	: ProdInvChk
+Compute	: Closingbalance1	: if $$IsNegative:$Closingbalance then 0 else $Closingbalance
+Compute	: ClosingValue1	: if $$IsNegative:$ClosingValue then 0 else $ClosingValue
+Compute	: BaseUnits1	: if $BaseUnits= " Not Applicable" then "Not Applicable" else $BaseUnits
+Compute : Decimalname 	: $$Number:$Decimalplaces:Unit:$BaseUnits1
+Compute	: Parent1		: if $Parent = " Primary" then "Primary" else $Parent
+Compute : LedOpBal1      : $$CollSrcObj:$ClosingValue
+;select $Name,$StockPBelogsStatus, $Closingbalance1 from ListofDymcsProductNew
+
+;[Function:Dyms_InventoryFull]
+;	Variable	:	Temp					:String
+;	Variable	:	Find1stStr				:	String
+;	Variable	:	FindReplaceStr			:	String
+;	Variable	: 	DymsLocalHostPathRetailer,DymsFTPPathRetailer			: String
+;	Variable	:	TempDSRNAme,DymsFTPPathProductCode:String
+;	Variable	:	Dyms_CountrMsgVAr1,Dyms_CountrMsgVAr2,Dyms_CountrMsgVAr3:String
+;	Variable	:	Dyms_CountrMsgVAr4,Dyms_CountrMsgVAr5,Dyms_CountrMsgVAr6:String
+;	;000 : Set :TempDSRNAme: "D:\Personal\Vel\Code\Coding\TDL\DymsDigital"+"\productinventorys.json"
+;	; 000			: If	: $$IsFileExists:##TempDSRNAme
+;	;001			: Delete File	: ##TempDSRNAme
+;	;002			: End If
+;	000	:	Log: "Inventory Upload(Full) Running"
+;	
+;	002 :	Set			: DymsFTPPathProductCode			:$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPCustomerInvenFolder;+"/productinventorys.json"
+;	003	:	If:$$IsInternetActive
+;	02  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "Inventory(Full)"
+;	03  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : "All"
+;	004	:	If:NOT $$IsEmptyCollection:ListofDymcsInv ;
+;	004a:	Delete File	:	@@Dyms_Item_FileNew
+;	005	: 	Set File Log On
+;	006	: 	OPEN FILE :@@Dyms_Item_FileNew:Text:Write :ASCII
+;	020	:	Truncate File
+;	040	:	Write File Line	: "{"
+;	100	:	Write File Line	: '"' + "STOCKENTRY" + '"' + ": " + "[" 
+;	127	:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:ListofDymcsInv
+;	128	: Start Progress:(##Dyms_CountrMsgVAr1) : ($$LocaleString:"Upload Inventory(Full)..") : "Please wait" : ""
+;	
+;	264	:	Write File Line	: "{"
+;	270	:   Write File Line	: '"' + "ENTRYNUMBER" + '"' + ": " + '"' + "Inv000"+$$RandomNumber + '"' + ","
+;	270A:   Write File Line	: '"' + "DATE" + '"' + ": " + '"' + $$Date:$$MachineTime:"NoSymbol" + '"' + ","
+;	270B:   Write File Line	: '"' + "TOTALAMOUNT" + '"' + ": " + '"' +$$StringWordEx:$OpeningRate:"/":1 + '"' + ","
+;	201	:	Walk Collection:ListofDymcsInv
+;	260	: 	Write File Line	: '"' + "INVENTORY" + '"' + ": " + "[" 
+;	204	:	Write File Line	: "{"
+;	206	:		Set	:	Find1stStr	:	 $$StringFindAndReplace:$Name:"\":"\\'"
+;	210	:	Write File Line	: '"' + "PRODUCT_NAME" + '"' + ": " + '"' +$$StringFindAndReplace:##Find1stStr:'"':'\"' + '"' + ","
+;	220	:	Write File Line	: '"' + "PRODUCT_CODE" + '"' + ": " + '"' +$$StringFindAndReplace:##Find1stStr:'"':'\"' + '"' + ",";($$ReptField:Name:2:StockItem:$Name):"\":"\\" + '"' + ","
+;	230	:	Write File Line	: '"' + "PRODUCT_QTY" + '"' + ": " + '"' + $$String:$Closingbalance2:"NoSymbol"  + '"' + ","
+;	240	:	Write File Line	: '"' + "PRODUCT_COST" + '"' + ": " + '"' + $$StringWordEx:$ClosingRate:"/":1 + '"' + ","
+;	250	:	Write File Line	: '"' + "PRODUCT_TOTALCOST" + '"' + ": " + '"' + $$String:($$StringWordEx:$ClosingValue2:"/":1):"NoComma" + '"' 
+;	252	:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Uploading Inventory(Full) for.."):($Name)
+;	
+;	;262:	Walk Collection	:	BATCHALLOCATIONS
+;
+;	;270C			: Write File Line	: '"' + "GodownAmt" + '"' + ": " + '"' +$$StringWordEx:$OpeningValue:"/":1 + '"' + ","
+;	;271:	If:$$IsLastObj:$GodownName
+;	;272			: Write File Line	: "}"
+;	;273	:	Else
+;	;274			: Write File Line	: "},"
+;	;275	:	End If
+;	;276:	End Walk
+;	;280			: Write File Line	: "],"
+;	
+;	281:If:$$IsLastObj:$NAme
+;	292			: Write File Line	: "}"
+;	293:Else
+;	293A			: Write File Line	: "},"
+;	294:	End If
+;	294A:End Walk
+;	295	:	End Progress
+;	296			: Write File Line	: "],"
+;	297:Write File Line	: '"COUNT": ' + '"' +##Dyms_CountrMsgVAr1 + '"' 
+;	298		: Write File Line	: "}"
+;	300	:	Walk Collection	:	ListofDymcsProductNew
+;	310	:	New Object	:	StockItem	:	$NAme	:	Yes
+;	320	:	Set Value	:	StockPBelogsStatus	:	"0"
+;	330	:	Accept Alter
+;	500	:	End Walk
+;	5030:	Set File Log Off
+;	5040:	Close Target File
+;	5060 :	Set				: DymsLocalHostPathRetailer			:	@@RetailerDownloadFTPInventory;
+;	5070 : 	Copy File		: ##DymsLocalHostPathRetailer	:   @@Dyms_Item_FileNew;@@Dyms_Item_Main+"\Product.json"
+;	12780:Else
+;	;12790:Msg Box	:	Inventory	:	"There is no modification or newly created product available."
+;	12800:	End If
+;	12810:Else
+;	12820:Msg Box	:	Inventory(Full)	:	"Check your Internet"
+;	12830:	End If
+
+;;;;;;;;;;;;;; Product Upload ;;;;;;;;;;;;;
+
+	
+[Collection	:SeelingRate]
+	Type	:	Stockitem
+	Fetch	:	name,.*.,Rate
+	
+[Collection:SeelingRateVal]
+	Source Collection:SeelingRate
+	Walk	:Standard Price List
+	Compute:Gstitemname			:	$name
+	Compute:SellingDate			:	$Date
+	Compute:SellingRate			:	$Rate
+	Search Key:$Gstitemname
+
+[Function:Dyms_ProductUploadNew]
+	Variable	: Temp			:String
+	Variable	: Find1stStr	:	String
+	Variable	: FindReplaceStr	:	String
+	Variable	: DymsLocalHostPathRetailer,DymsFTPPathRetailer,Taxable	: String
+	Variable	: TempDSRNAme,DymsFTPPathProductCode :String
+	Variable	: Dyms_HSNCode,QTYINDECIMALVar	: Number
+	Variable	: Dyms_CountrMsgVAr1	: Number
+	Variable	: Dyms_CountrMsgVAr2:String
+	Variable	: Dyms_CountrMsgVAr4,Dyms_CountrMsgVAr5,Dyms_CountrMsgVAr6:String
+	;000 : Set :TempDSRNAme: "D:\Personal\Vel\Code\Coding\TDL\DymsDigital"+"\productinventorys.json"
+	; 000			: If	: $$IsFileExists:##TempDSRNAme
+	;001			: Delete File	: ##TempDSRNAme
+	;002			: End If
+	000	: Log: "Product Upload Running"
+	002 :	Set			: DymsFTPPathProductCode			:$$MakeFTPName:@@DymcsFTPName:@@DymcsDataAdmin:@@DymcsDataPassword:@@DymcsFTPCustomerStockFolder+"/product.json"
+	003	:	If:$$IsInternetActive
+	02  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncJob.AutoSyncJob : "Product"
+	03  :   Modify Object : (Company,$$CurrentSimpleCompany).AutoSyncAllJob.AutoSyncAllJob : ""
+	059	:	If: not $$IsFileExists:##DymsFTPPathProductCode
+	kkl	:	Call: CheckProductMandtrVal 
+	04	:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:ListofDymcsProductNew
+	004	:	If:##Dyms_CountrMsgVAr1>0
+	004a:	Delete File	:	@@Dyms_Item_FileNew1
+	005: Set File Log On
+	006: OPEN FILE :@@Dyms_Item_FileNew1:Text:Write :ASCII
+	020			: Truncate File
+	040			: Write File Line	: "{"
+	100			: Write File Line	: '"' + "product" + '"' + ": " + "[" 
+	;	127	:	Set	:	Dyms_CountrMsgVAr1	:	$$NumItems:ListofDymcsProductNew
+	128:	Start Progress:(##Dyms_CountrMsgVAr1) : ($$LocaleString:"Upload Product..") : "Please wait" : ""
+	201	:Walk Collection:ListofDymcsProductNew
+	202	: Start Batch Post	
+	204			: Write File Line	: "{"
+	Local Formula	: ProdSellingRate		: $$StringWordEx:($$CollectionFieldByKey:$SellingRate:$Name:SeelingRateVal):"/":1
+	206:	Set	:	Find1stStr	:	$$StringFindAndReplace:$Name:"\":"\\'"
+	210			: Write File Line	: '"' + "PRODUCT NAME" + '"' + ": " + '"' + $$StringFindAndReplace:##Find1stStr:'"':'\"' + '"' + ","
+	220			: Write File Line	: '"' + "PRODUCT CODE" + '"' + ": " + '"' +$$StringFindAndReplace:##Find1stStr:'"':'\"' + '"' + ",";($$ReptField:Name:2:StockItem:$Name):"\":"\\" + '"' + "," 
+	230			: Write File Line	: '"' + "PRODUCT GROUP" + '"' + ": " + '"' + $Parent1 + '"' + ","
+	240			: Write File Line	: '"' + "PRODUCT UNIT" + '"' + ": " + '"' + $BaseUnits1 + '"' + ","
+	241			: Set	: QTYINDECIMALVar : $Decimalname
+	242			: Write File Line	: '"' + "QTY IN DECIMAL" + '"' + ": " + '"' + (If $$IsEqual:##QTYINDECIMALVar:0 Then "N" Else "Y" )+ '"' + ","
+	250			: Write File Line	: '"' + "PRODUCT MRP" + '"' + ": " + '"' + $$LocaleString:@ProdSellingRate + '"' + ","
+	252:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Uploading Product for.."):($Name)
+	260			: Write File Line	: '"' + "PRODUCTDETAILS" + '"' + ": " + "[" 
+	;262:	Walk Collection	:	BATCHALLOCATIONS
+	264			: Write File Line	: "{"
+	;270			: Write File Line	: '"' + "HSNCODE" + '"' + ": " + '"' +$$GetInfoFromHierarchy:$Name:"StockItem":"HSNCode":##SVCurrentDate:"GST" + '"' + ","
+	Local Formula	: IGstRt			: $(StockItem,$Name).GSTDETAILS[LAST].STATEWISEDETAILS[1,@@IsAnyState].RateDetails[1,@@IsIGST].GSTRate
+	Local Formula	: CGstRt			: $(StockItem,$Name).GSTDETAILS[LAST].STATEWISEDETAILS[1,@@IsAnyState].RateDetails[1,@@IsCGST].GSTRate
+	Local Formula	: SGstRt			: $(StockItem,$Name).GSTDETAILS[LAST].STATEWISEDETAILS[1,@@IsAnyState].RateDetails[1,@@IsSGST].GSTRate
+	Local Formula	: CeGstRt			: $(StockItem,$Name).GSTDETAILS[LAST].STATEWISEDETAILS[1,@@IsAnyState].RateDetails[1,@@IsAddlCess].GSTRate
+	Local Formula	: AFGstRt			: $(StockItem,$Name).GSTDETAILS[LAST].APPLICABLEFROM
+	Local Formula	: HSNGstRt			: $(StockItem,$Name).GSTDETAILS[LAST].HSN;HSNMASTERNAME
+	268				: Set				: Dyms_HSNCode : $(StockItem,$Name).GSTDETAILS[LAST].HSNCode
+	Local Formula	: HSNGstCode		: ##Dyms_HSNCode
+	Local Formula	: HSNTaxabl			: $(StockItem,$Name).GSTDETAILS[LAST].Taxability
+	00r	: Set		: Taxable			: if @HSNTaxabl=" Unknown" then "Unknown" else @HSNTaxabl
+	Local Formula	: HSNCalcuType		: $(StockItem,$Name).GSTDETAILS[LAST].CalculationType
+	;$$GetInfoFromHierarchy:$StockItemName:"StockItem":"GSTRate":@@VchDate:"GST":0:@@IGSTDutyHead
+	;270A			: Write File Line	: '"' + "IGSTPERC" + '"' + ": " + '"' +$$GetInfoFromHierarchy:$Name:"StockItem":"GSTRate":##SVCurrentDate:"GST":0:@@IGSTDutyHead + ","
+	;270B			: Write File Line	: '"' + "CGSTPERC" + '"' + ": " + '"' +$$GetInfoFromHierarchy:$Name:"StockItem":"GSTRate":##SVCurrentDate:"GST":0:@@CGSTDutyHead + '"' + ","
+	;270C			: Write File Line	: '"' + "SGSTPERC" + '"' + ": " + '"' +$$GetInfoFromHierarchy:$Name:"StockItem":"GSTRate":##SVCurrentDate:"GST":0:@@SGSTDutyHead + ","
+	;270D			: Write File Line	: '"' + "CESS" + '"' + ": " + '"' +$$GetInfoFromHierarchy:$Name:"StockItem":"GSTRate":##SVCurrentDate:"GST":0:@@CessDutyHead + ","
+	;270E			: Write File Line	: '"' + "APPLICABLE DATE" + '"' + ": " + '"' +$$GetInfoFromHierarchy:$Name:"StockItem":"ApplicableFrom":##SVCurrentDate:"GST" + '"' + ","
+	;270F			: Write File Line	: '"' + "DESC" + '"' + ": " + '"' +$$GetInfoFromHierarchy:$Name:"StockItem":"HSNMasterName":##SVCurrentDate:"GST" + '"' + ","
+	270A			: Write File Line	: '"' + "HSNCODE" + '"' + ": " + '"' + $$LocaleString:@HSNGstCode+ '"' + ","
+	270B			: Write File Line	: '"' + "IGSTPERC" + '"' + ": " + '"' + $$LocaleString:@IGstRt+ '"' + ","
+	270C			: Write File Line	: '"' + "CGSTPERC" + '"' + ": " + '"' + $$LocaleString:@CGstRt + '"' + ","
+	270D			: Write File Line	: '"' + "SGSTPERC" + '"' + ": " + '"' + $$LocaleString:@SGstRt+ '"' + ","
+	270E			: Write File Line	: '"' + "CESS" + '"' + ": " + '"' + $$LocaleString:@CeGstRt+ '"' + ","
+	270F			: Write File Line	: '"' + "APPLICABLE DATE" + '"' + ": " + '"' +$$LocaleString:@AfGstRt + '"' + ","
+	270G			: Write File Line	: '"' + "DESC" + '"' + ": " + '"' +$$LocaleString:@HSNGstRt+ '"' + ","
+	270H			: Write File Line	: '"' + "GST Taxability" + '"' + ": " + '"' +$$LocaleString:##Taxable + '"' + ","
+	270I			: Write File Line	: '"' + "GST CalcType" + '"' + ": " + '"' +$$LocaleString:@HSNCalcuType+ '"' + ""
+	271:	If: $$IsLastObj:$GodownName
+	272			: Write File Line	: "}"
+	273	:	Else
+	274			: Write File Line	: "}"
+	275	:	End If
+	;276:	End Walk
+	280			: Write File Line	: "]"
+	
+	281:If:$$IsLastObj:$NAme
+	292			: Write File Line	: "}"
+	293:Else
+	293A			: Write File Line	: "},"
+	294:	End If
+	294A:End Walk
+	295a:End Batch Post
+	295	:	End Progress
+	296			: Write File Line	: "],"
+	297:Write File Line	: '"COUNT": ' + '"' +$$String:##Dyms_CountrMsgVAr1 + '"' 
+	298	: Write File Line	: "}"
+	300	:	Walk Collection	:	ListofDymcsProductNew
+	310	:	New Object	:	StockItem	:	$NAme	:	Yes
+	320	:	Set Value	:	StockPBelogsStatus	:	"0"
+	330	:	Accept Alter
+	500	:	End Walk
+	5030:	Set File Log Off
+	5040:	Close Target File
+	; 	5040 :	If:not $$IsFileExists:##DymsFTPPathProductCode
+	5060 :	Set				: DymsLocalHostPathRetailer		:	@@RetailerDownloadFTPStock;
+	5070 : 	Copy File		: ##DymsLocalHostPathRetailer	:   @@Dyms_Item_FileNew1;@@Dyms_Item_Main+"\Product.json"
+		
+	;	5050 :	Msg Box:Error:"File not Found" 
+	;	5060 :Else
+	;  	5070 : 	Copy File		: ##TempDSRNAme	:   ##DymsFTPPathProductCode;@@Retailerxmls
+	;	5085:End If
+	12780:Else
+	12790:Msg Box	:	Product	:	"There is no Modification or Newly created product available.. \n Resolve Errors if Any!"
+	12800:	End If
+	13910:Else
+	13920:Msg Box	:	Product :	"There is an Unprocessed file from FSM. Kindly contact FSM admin to process the pending files"
+	13930:	End If
+	12810:Else
+	12820:Msg Box	:	Product	:	"Check your Internet"
+	12830:	End If
+
+[#Form	:	Stock Item]
+	On : Form Accept : $$InAlterMode	: Call: StatusPChangeFun 
+	;On : Form Accept : $$InCreateMode	: Call: StatusPChangeFunNeww
+
+[#Field:MstName]
+	On : Focus : $$InCreateMode	: Call: StatusPChangeFunNeww
+	
+	[Function: StatusPChangeFun]
+	
+    10 : Set Object
+    20 : Set Target
+	30 : Set Value:StockPBelogsStatus :"1" 
+	40 : Alter Target
+	[Function: StatusPChangeFunNeww]
+	
+	20 : Set Target:().
+    10 : Set Object:().
+	30 : Set Value:StockPBelogsStatus :"1" 
+	;40 : Alter Target
+
+[Collection:ListofDymcsProductNew]
+	
+Type:STockitem
+Fetch:Name,ClosingRate,StockPBelogsStatus;,OpeningQty,OpeningRate,OpeningValue,BATCHALLOCATIONS.*.,OpeningBalance
+Filter	: POCUploadSyncuploadStatus;Nameqw;
+Compute	: Closingbalance1	: if $$IsNegative:$Closingbalance then 0 else $Closingbalance
+Compute	: ClosingValue1	: if $$IsNegative:$ClosingValue then 0 else $ClosingValue
+Compute	: BaseUnits1	: if $BaseUnits= " Not Applicable" then "Not Applicable" else $BaseUnits
+Compute : Decimalname 	: $$Number:$Decimalplaces:Unit:$BaseUnits1
+Compute	: Parent1		: if $Parent = " Primary" then "Primary" else $Parent
+Compute : LedOpBal1      : $$CollSrcObj:$ClosingValue
+;select $Name,$StockPBelogsStatus, $Closingbalance1 from ListofDymcsProductNew
+
+[Collection:ListofDymcsInv]
+	
+Type:STockitem
+Fetch:Name,ClosingRate,StockPBelogsStatus
+Compute	:  Closingbalance2	: if $$IsNegative:$Closingbalance then 0 else $Closingbalance
+Compute	: ClosingValue2	: if $$IsNegative:$ClosingValue then 0 else $ClosingValue
+;select $Name, $Closingbalance from ListofDymcsInv
+
+[Collection:ListofDymcsProduct]
+	
+Type:STockitem
+Filter	:	POCUploadSyncuploadStatus
+Fetch:*.*,StockPBelogsStatus;,OpeningQty,OpeningRate,OpeningValue,BATCHALLOCATIONS.*.,OpeningBalance
+
+;select $name from ListofDymcsProduct
+[System:Formula]
+POCUploadSyncuploadStatus		: $StockPBelogsStatus="1" ;;$StockPBelogsStatus="0" or $StockPBelogsStatus="1"; or $$IsEmpty:$StockPBelogsStatus;;Changed by deepika
+ProdInvChk			:	$StockPBelogsStatus="1" or $StockPBelogsStatus="2"
+
+;;;;;;;;;;;;; Check Product Mandatory Values ;;;;;;;;;;;;
+
+[Function: CheckProductMandtrVal]
+	Variable	: MasterIdh		: String
+	Variable	: collectioncnt	: Number
+
+	
+	bbb : Set	: collectioncnt:$$NumItems:MandtrCheckProduct
+	iii	:	If: ##collectioncnt>0
+	1j5	:	Start Progress:(##collectioncnt) : ($$LocaleString:"Checking Mandatory Values..") : "Please wait" : ""
+	000	: Walk Collection:MandtrCheckProduct
+	aaa	: Set	: IsEmptyProdValue	:	No
+	
+	001	: Log:"-------------------------------------------------------------------------------------------"
+    002 : IF : ($$IsEmpty:$Name) 
+    003 : 	 Log: "Missing Stock Item Name Value, Kindly Update for  " + $Name
+    004 :    Set : IsEmptyProdValue:Yes
+    005 : End If
+	
+	252d:	Show Progress:$$LoopIndex:$$Sprintf:" %s %s":($$LocaleString:"Missing Mandatory Values of Stock Item for.."):($Name)
+	
+    302 : IF : ($$IsEqual:$BaseUnits1:"Not Applicable") 
+    303 : 	 Log: "Missing Base Units Value, Kindly Update for  " + $Name
+    304 :    Set : IsEmptyProdValue:Yes
+    305 : End If
+	
+    102 : IF : ($$IsEmpty:$(StockItem,$Name).GSTDETAILS[LAST].HSNCode) ;$HSNCode
+    103 : 	 Log: "Missing HSN Code Value, Kindly Update for  " + $Name
+    104 :    Set : IsEmptyProdValue:Yes
+    105 : End If
+	
+	195	: If: ($$StringLength:$(StockItem,$Name).GSTDETAILS[LAST].HSNCode<6);$HSNCode
+	197	: 	Log: "HSN Code must have at least 6 digits, Kindly Update for  " +$Name
+	198	:	Set: IsEmptyProdValue:Yes
+	199	: End If
+;	
+;	295	: If: ($$IsEmpty:$BaseUnits:StockItem:$stknm)
+;	297	: 	Log: "Missing Base Unit (UOM) Value, Kindly Update for  " + $stknm + "  In  " +$VCHNO
+;	298	:	Set: IsEmptyProdValue:Yes
+;	299	: End If
+	
+	39r	: If: ($$IsEmpty:$IGSTRate)
+	39s	: 	Log: "Missing IGSTRate Value, Kindly Update for  "  +$Name
+	39t	:	Set: IsEmptyProdValue:Yes
+	39u	: End If 
+	
+	35r	: If: ($$IsEmpty:$CGSTRate)
+	35s	: 	Log: "Missing CGSTRate Value, Kindly Update for  "  +$Name
+	35t	:	Set: IsEmptyProdValue:Yes
+	35u	: End If 
+
+	1010: If: ($$IsEmpty:$SGSTRate)
+	1015: 	Log: "Missing SGSTRate Value, Kindly Update for  "  +$Name
+	1020:	Set: IsEmptyProdValue:Yes
+	1025: End If 
+	
+
+	385	: If: (##IsEmptyProdValue=Yes)
+	386	:	 Modify Object : (StockItem,$Name).StockPBelogsStatus.StockPBelogsStatus : "3"
+	387	: Else
+	388	:	 Modify Object : (StockItem,$Name).StockPBelogsStatus.StockPBelogsStatus : "1"
+	389	: End If
+		
+	100	: End Walk
+	20gr: End Progress
+	uuuu: End If
+
+[System:Variable]
+	IsEmptyProdValue : No
+	
+[Variable:IsEmptyProdValue]
+	Type	: Logical
+	Default	:	No
+
+[Collection:MandtrCheckProduct]
+	
+Type:STockitem
+Fetch:Name,ClosingRate,StockPBelogsStatus
+Filter	: POCUploadSyncuploadStatus2
+Compute	: Closingbalance1	: if $$IsNegative:$Closingbalance then 0 else $Closingbalance
+Compute	: ClosingValue1	: if $$IsNegative:$ClosingValue then 0 else $ClosingValue
+Compute	: BaseUnits1	: if $BaseUnits= " Not Applicable" then "Not Applicable" else $BaseUnits
+Compute : Decimalname 	: $$Number:$Decimalplaces:Unit:$BaseUnits1
+Compute	: Parent1		: if $Parent = " Primary" then "Primary" else $Parent
+Compute	: HSNCode		: $GSTDETAILS.Hsncode
+Compute	: IGSTRate		: $GSTDETAILS[LAST].STATEWISEDETAILS[1,@@IsAnyState].RateDetails[1,@@IsIGST].GSTRate
+Compute	: CGSTRate		: $GSTDETAILS[LAST].STATEWISEDETAILS[1,@@IsAnyState].RateDetails[1,@@IsCGST].GSTRate
+Compute	: SGSTRate		: $GSTDETAILS[LAST].STATEWISEDETAILS[1,@@IsAnyState].RateDetails[1,@@IsSGST].GSTRate
+;select $Name,$StockPBelogsStatus, $BaseUnits1, $HSNCode, $IGSTRate, $CGSTRate, $SGSTRate from MandtrCheckProduct
+
+[System:Formula]
+POCUploadSyncuploadStatus2		: $StockPBelogsStatus="1" or $StockPBelogsStatus="3" 

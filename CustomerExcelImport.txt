@@ -1,0 +1,144 @@
+
+
+[Report:Dyms_LedgerImport]
+	
+Form	:Dyms_LedgerImport
+
+
+[Form	:Dyms_LedgerImport]
+	
+	Width	:30% PAGE
+	Height	:30% pAGE	
+	
+	Part			: Dyms_LedgerMasterImportPart
+	
+	On	: Form Accept	: Yes	: Call	: :DymsCustomerImportFunction:#Dymcs_Common_LedgerMasterImportPathName:#Dymcs_Common_LedgerMasterImportExcelSheetNames:#Common_LedgerMasterImportExcelVchtypeNames
+
+[Part			: Dyms_LedgerMasterImportPart]
+	Lines		: DymsCommon_LedgerMasterImporttExcel,DymsCommon_LedgerMasterImportExcelFilePath,DymcsCommon_LedgerMasterImportExcelPathName,Dymcs_Common_MasterImportExcelSheetName
+
+
+[Line				: DymsCommon_LedgerMasterImporttExcel]
+	
+ 	Fields         	: Form Sub Title
+	Space Bottom    : 0.25        
+	Local   		: Field : Form Sub Title : Info : $$LocaleString:"Customer Excel Import"
+	
+
+
+
+
+[Line				: DymsCommon_LedgerMasterImportExcelFilePath]
+	
+ 	Fields         	: Form Sub Title
+	Space Bottom    : 0.45        
+	Local   		: Field : Form Sub Title : Info : $$LocaleString:"(Excel  file should be in C:\ExcelImport folder)"
+	Local   		: Field : Form Sub Title : Style: Normal Italic	
+	
+
+
+[Line				: DymcsCommon_LedgerMasterImportExcelPathName]
+	
+ 	Fields         	: Medium Prompt,Dymcs_Common_LedgerMasterImportPathName
+	Space Top	    : 2        
+	Space Bottom    : 0.25        
+	Local   		: Field : Medium Prompt : Set as	: " Path Name :"
+	
+[Field			:	Dymcs_Common_LedgerMasterImportPathName]
+	
+	Use			: Name Field
+	Table		: Common_DownloadSourceExcel
+	Show Table	: Always
+	Full Width	: Yes
+ 	Width		: @@ShortNameWidth
+ 	Modifies	: Common_LedgerMasterImportExcelPathName:Yes
+	
+
+[Line				: Dymcs_Common_MasterImportExcelSheetName]
+	
+ 	Fields         	: Medium Prompt,Dymcs_Common_LedgerMasterImportExcelSheetNames
+	Space Top	    : 2        
+	Space Bottom    : 0.25        
+	Local   		: Field : Medium Prompt : Set as	: " Sheet Name :"
+
+
+
+
+[Field			:Dymcs_Common_LedgerMasterImportExcelSheetNames]
+	
+	Use			:  Name Field
+	Set as  	: ##Common_LedgerMasterImportExcelSheetName
+	Width		:	@@ShortNameWidth
+	Full Width	: Yes
+ 	Modifies	: Common_LedgerMasterImportExcelSheetName:Yes
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+[Variable		:	DymcsCustomertListVariable]
+	 
+
+	Variable		: SmartJournalInvoiceNo					:	String
+	Variable		: SmartJournalInvoiceDate				:	String
+	Variable		: SmartJournalInvoiceAccountName			:	String
+	Variable		: SmartJournalInvoiceAccountGrpName				:	String
+	Variable		: SmartJournalInvoiceAccountDbtAmt			:	String	
+	Variable		: SmartJournalInvoiceAccountCdtAmt			:	String 
+	Variable		: SmartJournalInvoiceAccountNarration			:	String 
+	Variable		: SmartJournalInvoiceChequeNo			:	String 
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+[Function:DymsCustomerImportFunction]
+	
+
+	Parameter	: DymsCustomerImportExcelPathName 			: 	String
+	Parameter	: DymsCustomerImportExcelSheetName			: 	String
+	
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+[Variable				:	Common_LedgerMasterImportExcelPathName]
+	
+	Type				: 	String
+	Persistent			: 	Yes
+ 
+[Variable				:	Common_LedgerMasterImportExcelSheetName]
+	
+	Type				: String
+	Persistent			: Yes
+	
+
+
+[System	:Formulae]
+	
+
+	CommonExcelFileFilter				:  ($Name ENDING WITH "xlsx") OR ($Name ENDING WITH "xls") OR ($Name ENDING WITH "xlsm")
+	Common_FolderPath 					:	"C:\ExcelImport"+"\"
+	MMIS_LogPaths						:  @@Common_FolderPath+"\Customer.txt"
+	MMIS_LogPath						:  @@Common_FolderPath+"\Customer.txt"
+	
+
+	
+[Collection				:Common_DownloadSourceExcel]
+
+	Title                : "File Listing"
+    Sub Title            : "File Name", "File Size"
+    Data Source          : Directory : @@Common_FolderPath
+    Format               : $Name, 25
+    Format               : $FileSize, 15
+    Filter				 : OnlyFilesFilter,CommonExcelFileFilter
+	Client Only   		 : Yes
+
+
+
+ 
+
+[System	: Variables	]
+	
+		Common_LedgerMasterImportExcelPathName	:	""		
+		Common_LedgerMasterImportExcelSheetName	:	""
+		

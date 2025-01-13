@@ -1,0 +1,781 @@
+ 
+[Report:FTPFoldersConfig]
+	
+Title	:$$LocaleString:"FTP Configuration"
+Form	:FTPFoldersConfigFrm
+Object	:Company
+
+[Form	:FTPFoldersConfigFrm]
+	
+Width	:50% page
+Height	:85% page
+;Background	:	Lavender;@@SV_FTP_SATINBlue
+Parts	:FTPFoldersConfigPart
+;Parts	:AdvTallyINI KPLFTP Setup
+
+On	:	Form Accept	:	Yes	:	Form Accept
+On	:	Form Accept	:	Yes	:	Call	:	SyncTallyKPLWrite
+On	:	Form Accept	:	Yes	:	Form Accept
+
+[System	:	Formulae]
+		GetAppPath11			    :  $$SysInfo:ApplicationPath
+		FTPSynclogfile			    :  @@GetAppPath11+"\FTPSync.txt"
+		FSMDatapath					:  $FSMFilepath:Company:##SVCurrentCompany
+
+[Function	:	SyncTallyKPLWrite]
+	Variable	:	Storefiledata1	:	String
+	Variable	:	Storefiledata2	:	String
+	Variable	:	Storefiledata3	:	String
+		0002:	Set	:	Storefiledata1	:	$EnableManualSync
+		0004:	Set	:	Storefiledata2	:	$EnableAutoSync
+		0005:	Set	:	Storefiledata3	:	$$String:$EnableManualSync1
+;	0005:	Set File Log On
+;	0007: 	OPEN FILE : "E:\TallyProjects\New folder\Vigneshwara Paints\TDL\Phase I\Tamilword1.txt" 	: Text	: READ 
+	
+	0006:	Delete File:@@FTPSynclogfile
+	0007: 	OPEN FILE : @@FTPSynclogfile	: Text	: Write
+	0010	:	Write File Line	:	##Storefiledata1+"~"+##Storefiledata2+"~"+##Storefiledata3
+;	0010:	WHILE	: Not $$FileIsEOF
+;	0020		: 			Set			: LineStr	: $$StringWordEx:$$FileRead:"~":1
+;	0030		: 			If 			: NOT $$IsEmpty:##LineStr
+;	0040		:				Return	:	##LineStr
+;	0050		:			End If
+;	0060:	End While
+	0070:	Close Target File
+;	0080:	Set File Log Off
+[Function	:	SyncTallyKPLManual]
+	
+	Variable	: LineStr						: String
+	0002	:If:$$IsFileExists:@@FTPSynclogfile
+	0005:	Set File Log On
+;	0007: 	OPEN FILE : "E:\TallyProjects\New folder\Vigneshwara Paints\TDL\Phase I\Tamilword1.txt" 	: Text	: READ 
+	0007: 	OPEN FILE : @@FTPSynclogfile 	: Text	: READ 
+	0010:	WHILE	: Not $$FileIsEOF
+;	0011	:	Msg Box	:	FileRead	:	$$FileRead
+	0020	: 			Set			: LineStr	: $$StringWordEx:$$FileRead:"~":1
+	0030	: 			If 			: NOT $$IsEmpty:##LineStr
+	0040	:				Return	:	##LineStr
+	0050	:			End If
+	0060	:	End While
+	0070	:	Close File
+	0080	:	Set File Log Off
+	0088	:	Else
+	0090	:	Set	:	LineStr	: "No"
+	0100	:	Return:##LineStr
+	0110	:	End If
+[Function	:	SyncTallyKPLAuto]
+	
+	Variable	: LineStr						: String
+	0002	:If:$$IsFileExists:@@FTPSynclogfile
+	0005:	Set File Log On
+;	0007: 	OPEN FILE : "E:\TallyProjects\New folder\Vigneshwara Paints\TDL\Phase I\Tamilword1.txt" 	: Text	: READ 
+	0007: 	OPEN FILE : @@FTPSynclogfile 	: Text	: READ 
+	0010:	WHILE	: Not $$FileIsEOF
+	0020		: 			Set			: LineStr	: $$StringWordEx:($$StringWordEx:$$FileRead:"~":2):"~":1
+	0030		: 			If 			: NOT $$IsEmpty:##LineStr
+	0040		:				Return	:	##LineStr
+	0050		:			End If
+	0060:	End While
+	0070:	Close File
+	0080:	Set File Log Off
+	0088	:	Else
+	0090	:	Set	:	LineStr	: "No"
+	0100	:	Return:##LineStr
+	0110	:	End If
+[Function	:	SyncTallyKPLAuto1]
+	
+	Variable	: LineStr						: String
+	0002	:If:$$IsFileExists:@@FTPSynclogfile
+	0005:	Set File Log On
+;	0007: 	OPEN FILE : "E:\TallyProjects\New folder\Vigneshwara Paints\TDL\Phase I\Tamilword1.txt" 	: Text	: READ 
+	0007: 	OPEN FILE : @@FTPSynclogfile 	: Text	: READ 
+	0010:	WHILE	: Not $$FileIsEOF
+	0020		: 			Set			: LineStr	: $$StringWordEx:$$FileRead:"~":3
+	;0021		:			Log			: ##LineStr + "Fun"
+	0030		: 			If 			: NOT $$IsEmpty:##LineStr
+	0040		:				Return	:	##LineStr
+	0050		:			End If
+	0060:	End While
+	0070:	Close File
+	0080:	Set File Log Off
+	0088	:	Else
+	0090	:	Set	:	LineStr	: "No"
+	0100	:	Return:##LineStr
+	0110	:	End If
+
+[Part	:FTPFoldersConfigPart]
+	
+
+Lines	:GSTConfigurationsTitles,FSMfilepathvalues,GSTConfigurationsValues,SGSTConfigurationsValues1,+
+		 FTPPAswrdLine,FTPFolderNameValue,FTPFolderNameValueN1,FTPCustomerUpld,FTPSupplierFolder,FTPSupplierFolderArch, + 
+		 FTPSupplierUpld,FTPFolderNameValue8,FTPFolderNameValue8N1,SalesTransactionUpload,PurchaseDownloadPath,+
+		 PurchaseUploadPath,RcptPmtDwnldPath,RcptPmtUploadPath,FTPFolderNameValue3,FTPFolderNameProduct,FSMStockItemArchivePath,+ 
+		 FTPFolderNameValue4,FTPFolderInvfldr,FTPFolderInvfldrArch,AdvTallyINI Manual Sync Type,AdvTallyINI Auto Sync Type,+
+		 AdvTallyINI Auto Sync Time,AdvTallyINIAdminMenu,SalesIntegrationConfig,FTPFolderNameValue7, PurchaseLedgerName, FTPFolderNameValue8N,+
+		 FTPFolderNameValue9,FTPFolderNameValue10,FTPFolderNameValue10N,FTPFolderNameValue11,FTPFolderNameValue12
+		 
+Scroll	:	Vertical
+;	POC_FTPServerFolderN1,POC_FTPHODownload2N1
+;	FTPFolderNameValueN1,FTPFolderNameValue8N1
+		 
+	[Line: AdvTallyINI Manual Sync Type]
+SpaceTop:	0.5
+
+		Field	: Long Prompt, TallyINI Manual Sync Type
+
+		Local	: Field	: Long Prompt		: Set as	: $$LocaleString:"Enable Manual FTP Sync?"
+
+		[Field: TallyINI Manual Sync Type]
+
+			Use			: Logical Field
+			Set By Condition	:	Yes	:	$$SyncTallyKPLManual
+			Set as		: if $$SyncTallyKPLManual="No" then No else Yes
+			Storage		: EnableManualSync
+			Set Always	: Yes
+;7010671435
+	[Line: AdvTallyINI Auto Sync Type]
+SpaceTop:	0.5
+
+		Field	: Long Prompt, TallyINI Auto Sync Type
+
+		Local	: Field	: Long Prompt		: Set as	: $$LocaleString:"Enable Automatic FTP Sync?"
+
+		[Field: TallyINI Auto Sync Type]
+
+			Use			: Logical Field
+			Set By Condition	:	Yes	:	$$SyncTallyKPLAuto
+			Set as		: if $$SyncTallyKPLAuto="No" then No else Yes
+			Storage		: EnableAutoSync
+			Set Always	: Yes
+;			Skip		: NOT $$AllowLocalCliSrvConfig
+
+	[Line: AdvTallyINI Auto Sync Time]
+		SpaceTop:	0.5
+
+		Field	: Long Prompt, TallyINI Auto Sync Time,TallyINI Auto Sync Date,TallyINI Auto Sync Job,TallyINI Auto Sync All Job
+	;	Invisible	:	#TallyINIAutoSyncType
+		Local	: Field	: Long Prompt		: Set as	: $$LocaleString:"Enter Auto Sync Time:"
+
+		[Field: TallyINI Auto Sync Time]
+
+			Use			: Short Name Field
+			Width		: 10
+			Type		: Time	;: Forced
+			Set By Condition	:	Yes	:	$$SyncTallyKPLAuto1
+			Set as		: if $$SyncTallyKPLAuto1="No" then No else Yes
+			Storage		: EnableManualSync1
+			Format		: "24 hour";##TSPLSmpCDTFormatVar;"H,M"
+			Set Always	: Yes
+		;	Invisible	: not #TallyINIAutoSyncType
+;[#Object	:	App INI Config]
+;	Storage	:	EnableManualSync	:	Logical
+;	Storage	:	EnableAutoSync		:	Logical
+
+		[Field:TallyINI Auto Sync Date]
+			Use	: Short Name field
+			Type: Date
+			Set as	: $$Value;$$SysInfo:SystemDate
+			Storage	: AutoSyncDate
+			Set Always: Yes
+			Skip	: Yes
+			
+		[Field:TallyINI Auto Sync Job]
+			Use: Short name field
+			Set as	: $$Value;$$SysInfo:SystemDate
+			Storage	: AutoSyncJob
+			Set Always: Yes
+			Skip	: Yes
+		;	Background: yellow
+		[Field:TallyINI Auto Sync All Job]
+			Use: Short Name Field
+			Set as	: $$Value;$$SysInfo:SystemDate
+			Storage	: AutoSyncAllJob
+			Set Always: Yes
+			Skip	: Yes
+		;	Background	: green
+		
+[Line:AdvTallyINIAdminMenu]
+		SpaceTop:	0.5
+		Field	: Long Prompt, AdvTallyINIAdminMenu
+		Local	: Field	: Long Prompt		: Set as	: $$LocaleString:"Enable Tally Admin Menu?"
+
+[Field:AdvTallyINIAdminMenu]
+	Use					: Logical Field 
+	Set as				: ##TallyAdminMenu
+	Set Always			: Yes
+	Show Table			: Always
+	Skip Forward		: Yes
+	Modifies			: TallyAdminMenu	: Yes
+	
+[Variable: TallyAdminMenu]
+	Type	: Logical
+	Persist	: Yes
+	
+[System:Variable]
+	TallyAdminMenu	:	No
+	
+[Line	:SalesIntegrationConfig]
+SpaceTop:	1
+Fields	: Form Sub Title 
+Local	:Field	:Form Sub Title		:	Info	:"Sales Transaction Configurations"
+
+[Line	:GSTConfigurationsTitles]
+SpaceTop:	1
+Fields	: Form Sub Title 
+Local	:Field	:Form Sub Title		:	Info	:"FTP Login Credentials"
+
+[Line:FSMfilepathvalues]
+	
+	SpaceTop:	0.5
+	Fields	: Medium Prompt,FSMFilepathprompt
+	Local	:Field	:Medium Prompt 		:	Info	:"JSON File Path :"
+	Local	:Field	:Medium Prompt		:  Style	: Normal  
+	Local	:Field	:Medium Prompt		:	Skip	:	Yes
+ 
+[Field	:FSMFilepathprompt]
+	Use			:	Name Field
+	Style		:	Normal
+	Width		:	@@NameWidth+20
+	Align		:	Left
+    Case        : 	Normal
+	Storage		:	FSMFilepath	
+
+[Line	:GSTConfigurationsValues]
+	
+SpaceTop:	0.5
+Fields	: Medium Prompt,CGSTConfigurationsValueFields
+Local	:Field	:Medium Prompt 		:	Info	:"FTP Address :"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Medium Prompt		:	Skip	:	Yes
+ 
+[Field	:CGSTConfigurationsValueFields]
+	Use			:	Name Field
+	Style		:	Normal
+	Width		:	@@NameWidth+10
+	Align		:	Left
+    Case        : 	Normal
+	Storage		:	POC_FTPServerPath
+
+[Line	:SGSTConfigurationsValues1]	
+SpaceTop:	0.5
+Fields	: Medium Prompt,SGSTConfigurationsValue1
+Local	:Field	:Medium Prompt		:	Info	:"UserId:"
+Local	:Field	:Medium Prompt	:  Style	: Normal  
+ Local	:Field	:Medium Prompt		:	Skip	:	Yes
+ 
+[Field	:SGSTConfigurationsValue1]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+    Case        : Normal
+	Storage	:	POC_FTPServerUsr
+	
+[Line	:FTPPAswrdLine]	
+SpaceTop:	0.5
+Fields	: Medium Prompt,FTPPasswordFld,FTPPAswrdFld
+Local	:Field	:Medium Prompt		:	Info	:"Password:"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Medium Prompt	:	Skip	:	Yes
+
+[Field	:FTPPasswordFld]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+    Case        : Normal
+	Storage	:	POC_FTPServerPwrd
+	
+
+
+[Field	:FTPPAswrdFld]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+    Case        : Normal
+	Invisible	:	Yes
+	Storage	:	POC_FTPServerPwrd
+	
+[Line	:FTPFolderNameValue]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPFolderNameValue
+Local	:Field	:Long Prompt		:	Info	:"Customer Master Download Path :"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Medium Prompt	:	Skip	:	Yes
+
+[Field	:FTPFolderNameValue]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	POC_FTPServerFolder
+[Line	:FTPFolderNameValueN1]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPFolderNameValueN1
+Local	:Field	:Long Prompt		:	Info	:"Customer Master Archive Path :"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Medium Prompt	:	Skip	:	Yes
+
+[Field	:FTPFolderNameValueN1]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	POC_FTPServerFolderN1
+	
+
+[Line	:FTPCustomerUpld]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPCustomerUpld
+Local	:Field	:Long Prompt		:	Info	:"Customer Master Upload Path :"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Medium Prompt	:	Skip	:	Yes
+
+[Field	:FTPCustomerUpld]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	FTPCustomerUpld
+	
+;;;;;;;;;;;;;;;;;Supplier Download
+	
+[Line	:FTPSupplierFolder]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPSupplierFolder
+Local	:Field	:Long Prompt		:	Info	:"Supplier Master Download Path :"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Medium Prompt	:	Skip	:	Yes
+
+[Field	:FTPSupplierFolder]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	FTPSupplierDownload
+	
+[Line	:FTPSupplierFolderArch]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPSupplierFolderArch
+Local	:Field	:Long Prompt		:	Info	:"Supplier Master Archive Path :"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Medium Prompt	:	Skip	:	Yes
+
+[Field	:FTPSupplierFolderArch]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	SupplierArchiveFolder
+
+[Line	:FTPSupplierUpld]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPSupplierUpld
+Local	:Field	:Long Prompt		:	Info	:"Supplier Master Upload Path :"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Medium Prompt	:	Skip	:	Yes
+
+[Field	:FTPSupplierUpld]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	SupplierUploadFolder
+
+[Line	:FTPFolderNameValue8]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPFolderNameValue8
+Local	:Field	:Long Prompt		:	Info	:"Sales Transaction Download Path:"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Medium Prompt	:	Skip	:	Yes
+
+[Field	:FTPFolderNameValue8]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	POC_FTPHODownload2
+	
+[Line	:FTPFolderNameValue8N1]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPFolderNameValue8N1
+Local	:Field	:Long Prompt		:	Info	:"Sales Transaction Archive Path:"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Long Prompt	:	Skip	:	Yes
+
+[Field	:FTPFolderNameValue8N1]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	POC_FTPHODownload2N1
+	
+[Line	:SalesTransactionUpload]	
+	SpaceTop:	0.5
+	Fields	: Long Prompt,SalesTransactionUpload
+	Local	:Field	:Long Prompt		:	Info	:"Sales Transaction Upload Path:"
+	Local	:Field	:Medium Prompt		:  Style	: Normal  
+	Local	:Field	:Long Prompt	:	Skip	:	Yes
+
+[Field	:SalesTransactionUpload]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	SalesUploadPath
+	
+
+[Line	:PurchaseDownloadPath]	
+	SpaceTop:	0.5
+	Fields	: Long Prompt,PurchaseDownloadPath
+	Local	:Field	:Long Prompt		:	Info	:"Purchase Transaction Download Path:"
+	Local	:Field	:Medium Prompt		:  Style	: Normal  
+	Local	:Field	:Long Prompt		:	Skip	:	Yes
+
+[Field	:PurchaseDownloadPath]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	PurchaseDownloadPath
+
+[Line	:PurchaseUploadPath]	
+	SpaceTop:	0.5
+	Fields	: Long Prompt,PurchaseUploadPath
+	Local	:Field	:Long Prompt		:	Info	:"Purchase Transaction Upload Path:"
+	Local	:Field	:Medium Prompt		:  Style	: Normal  
+	Local	:Field	:Long Prompt		:	Skip	:	Yes
+
+[Field	:PurchaseUploadPath]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	PurchaseUploadPath
+	
+[Line	:RcptPmtDwnldPath]
+	SpaceTop:	0.5
+	Fields	: Long Prompt,RcptPmtDwnldPath
+	Local	:Field	:Long Prompt		:	Info	:"Receipt & Payment Transaction Download Path:"
+	Local	:Field	:Medium Prompt		:  Style	: Normal  
+	Local	:Field	:Long Prompt		:	Skip	:	Yes
+
+[Field	:RcptPmtDwnldPath]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	RcptPmtDwnldPath
+	
+[Line	:RcptPmtUploadPath]
+	SpaceTop:	0.5
+	Fields	: Long Prompt,RcptPmtUploadPath
+	Local	:Field	:Long Prompt		:	Info	:"Receipt & Payment Transaction Upload Path:"
+	Local	:Field	:Medium Prompt		:  Style	: Normal  
+	Local	:Field	:Long Prompt		:	Skip	:	Yes
+
+[Field	:RcptPmtUploadPath]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	RcptPmtUploadPath
+	
+[Line	:FTPFolderNameValue3]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPFolderNameValue3
+Local	:Field	:Long Prompt		:	Info	:"Stock Item Master Upload Path :"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Long Prompt	:	Skip	:	Yes
+
+[Field	:FTPFolderNameValue3]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	POC_FTPHODownload3
+	
+;;;;;;;;;;Product Download Path 
+	
+[Line	:FTPFolderNameProduct]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPFolderNameProduct
+Local	:Field	:Long Prompt		:	Info	:"Stock Item Master Download Path :"
+Local	:Field	:Medium Prompt		:  Style	: Normal  
+ Local	:Field	:Long Prompt	:	Skip	:	Yes
+
+[Field	:FTPFolderNameProduct]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	FTPProductDownload
+	
+[Line	:FSMStockItemArchivePath]	
+	SpaceTop:	0.5
+	Fields	: Long Prompt,FSMStockItemArchivePath
+	Local	:Field	:Long Prompt		:	Info	:"Stock Item Master Archive Path :"
+	Local	:Field	:Medium Prompt		:  	Style	: Normal  
+	Local	:Field	:Medium Prompt		:	Skip	:	Yes
+
+[Field	:FSMStockItemArchivePath]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	StockItemArchiveFolder
+
+[Line	:FTPFolderNameValue4]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPFolderNameValue4
+Local	:Field	:Long Prompt	:  Info	:"Stock Journal Data Upload Path :";"Transaction Upload Path (GST):"
+Local	:Field	:Medium Prompt	:  Style: Normal  
+ Local	:Field	:Long Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderNameValue4]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	POC_FTPHODownload4
+
+;;;;;;;;;;;;Inventory Download 
+[Line	:FTPFolderInvfldr]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPFolderInvfldr
+Local	:Field	:Long Prompt	:  Info	:"Stock Journal File Download Path :"
+Local	:Field	:Medium Prompt	:  Style: Normal  
+ Local	:Field	:Long Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderInvfldr]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	FTPFolderInvfldr
+	
+[Line	:FTPFolderInvfldrArch]	
+SpaceTop:	0.5
+Fields	: Long Prompt,FTPFolderInvfldrArch
+Local	:Field	:Long Prompt	:  Info	:"Stock Journal Archive File Path :"
+Local	:Field	:Medium Prompt	:  Style: Normal  
+ Local	:Field	:Long Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderInvfldrArch]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Storage	:	FTPFolderInvfldrArch
+
+[Line	:FTPFolderNameValue7]	
+SpaceTop:	0.5
+Fields	: Medium Prompt,FTPFolderNameValue7
+Local	:Field	:Medium Prompt	:  Info	:"Sales Ledger Name :"
+Local	:Field	:Medium Prompt	:  Style: Normal  
+ Local	:Field	:Medium Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderNameValue7]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Table	:	Sales Income Ledgers
+	Show Table	:	On First Key
+	Storage	:	POC_FTPHODownload7
+	
+;;;;;;;;;;;; Purchase Ledger Name ;;;;;;;;;;;;;;;;
+
+[Line	:PurchaseLedgerName]	
+SpaceTop:	0.5
+Fields	: Medium Prompt,PurchaseLedgerName
+Local	:Field	:Medium Prompt	:  Info	:"Purchase Ledger Name :"
+Local	:Field	:Medium Prompt	:  Style: Normal  
+ Local	:Field	:Medium Prompt	:  Skip	:	Yes
+
+[Field	:PurchaseLedgerName]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Table	:	Inv Purch Ledgers
+	Show Table	:	On First Key
+	Storage	:	PurchaseLedgerName
+	
+[Line	:FTPFolderNameValue8N]	
+SpaceTop:	0.5
+Fields	: Medium Prompt,FTPFolderNameValue8N
+Local	:Field	:Medium Prompt	:  Info	:"CGST Ledger Name :"
+Local	:Field	:Medium Prompt	:  Style: Normal  
+ Local	:Field	:Medium Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderNameValue8N]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Table	:	GST Ledger Table
+	Show Table	:	On First Key
+	Storage	:	POC_FTPHODownload8
+[Line	:FTPFolderNameValue9]	
+SpaceTop:	0.5
+Fields	: Medium Prompt,FTPFolderNameValue9
+Local	:Field	:Medium Prompt	:  Info	:"SGST Ledger Name :"
+Local	:Field	:Medium Prompt	:  Style: Normal  
+ Local	:Field	:Medium Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderNameValue9]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Table	:	GST Ledger Table
+	Show Table	:	On First Key
+	Storage	:	POC_FTPHODownload9
+[Line	:FTPFolderNameValue10]	
+SpaceTop:	0.5
+Fields	: Medium Prompt,FTPFolderNameValue10
+Local	:Field	:Medium Prompt	:  Info	:"IGST Ledger Name :"
+Local	:Field	:Medium Prompt	:  Style: Normal  
+ Local	:Field	:Medium Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderNameValue10]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Table	:	GST Ledger Table
+	Show Table	:	On First Key
+	Storage	:	POC_FTPHODownload10
+[Line	:FTPFolderNameValue10N]	
+SpaceTop:	0.5
+Fields	: Medium Prompt,FTPFolderNameValue10N
+Local	:Field	:Medium Prompt	:  Info	:"Roundoff Ledger Name :";"Transaction Upload Path (GST):"
+Local	:Field	:Medium Prompt	:  Style: Normal  
+ Local	:Field	:Medium Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderNameValue10N]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Table	:	Round Ledger Table
+	Show Table	:	On First Key
+	Storage	:	POC_FTPHODownload10N
+[Line	:FTPFolderNameValue11]	
+	SpaceTop:	0.5
+	Fields	: Medium Prompt,FTPFolderNameValue11
+	Local	:Field	:Medium Prompt	:  Info	:"Godown Name :"
+	Local	:Field	:Medium Prompt	:  Style: Normal  
+	Local	:Field	:Medium Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderNameValue11]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Table	:	GodownIntegration
+	Show Table	:	On First Key
+	Storage	:	POC_FTPHODownload11
+	
+[Line	:FTPFolderNameValue12]	
+	SpaceTop:	0.5
+	Fields	: Medium Prompt,FTPFolderNameValue12
+	Local	:Field	:Medium Prompt	:  Info	:"Bank Ledger Name :"
+	Local	:Field	:Medium Prompt	:  Style: Normal  
+	Local	:Field	:Medium Prompt	:  Skip	:	Yes
+
+[Field	:FTPFolderNameValue12]
+	Use		:	Name Field
+	Style	:	Normal
+	Width	:	@@NameWidth+10
+	Align	:	Left
+	Table       : List of BankLedgers, DefaultSysName;GodownIntegration
+	Show Table	:	On First Key
+	Storage	:	POC_FTPHODownload12
+	
+
+[Collection	:	GodownIntegration]
+	Title	:	"List Of Godown"
+	Type	:	Godown
+;	Child Of	:	$$VchTypeSales
+;	Belongs To	:	Yes
+	Use	:	Alias Collection
+
+[Collection : Round Ledger Table]
+
+	Align       : Right
+    FullHeight  : Yes
+    Format      : $$Name, 25 
+    With Alias  : Yes
+    Set as      : $Name
+    Title       : $$LocaleString:"List of Ledger Accounts"
+    Fetch       : Name, ReserveName
+    Type        : Ledger
+	Filter		: FilterRoundoffVal
+
+[Collection : GST Ledger Table]
+
+    Use         : VLedTable
+    Type        : Ledger
+    Include     : Group:$$GroupDuties
+
+[System: Formula]
+	FilterRoundoffVal		: $Name Contains "Round"
+	GSTLedgerFilter 		: $$IsSysNameEqual:GST:$TaxType
+	
+[System	:	UDF]
+	
+	EnableManualSync	:	Logical	:	24400
+	EnableAutoSync		:	Logical	:	24405
+	EnableManualSync1	:	Time	:	24408 
+	AutoSyncDate		: 	Date	: 	24409
+	AutoSyncJob			:	String	:	24410
+	AutoSyncAllJob		:	String	:	24411
+	FSMFilepath			:	String		:   21001
+	POC_FTPServerPath	:	String		:	21002
+	POC_FTPServerUsr	:	String		:	21004
+	POC_FTPServerPwrd	:	String		:	21006
+	POC_FTPServerFolder	:	String		:	21012
+	POC_FTPHODownload2	:	String		:	21024
+	POC_FTPHODownload3	:	String		:	21030
+	FTPProductDownload	:	String		:	21033
+	StockItemArchiveFolder: String		: 	21035
+	POC_FTPHODownload4	:	String		:	21040
+	FTPFolderInvfldr	:	String		:	21042
+	FTPFolderInvfldrArch:	String		:	21044
+	POC_FTPHODownload7	:	String		:	21050
+	PurchaseLedgerName	:	String		:	21055
+	POC_FTPHODownload8	:	String		:	21060
+	POC_FTPHODownload9	:	String		:	21070
+	POC_FTPHODownload10	:	String		:	21080
+	POC_FTPHODownload11	:	String		:	21090
+	POC_FTPHODownload12	: 	String		:   21011
+	POC_FTPHODownload10N:	String		:	21100
+	StockPBelogsStatus	:	String		:	21112
+	POC_FTPServerFolderN1	:	String	:	21113
+	POC_FTPHODownload2N1	:	String	:	21114
+	PurchaseDownloadPath	:	String	:	21115
+	SupplierArchiveFolder	:	String	:	21116
+	FTPSupplierDownload		:	String	:	21117
+;	POC_FTPServerFolderN1,POC_FTPHODownload2N1
+
+	PrintSalesPaymentType			:	String	:	21118
+	PrintSalesPaymentID				:	String	:	21120
+	PrintSalesPaymentParty			:	String	:	21122
+	PrintSalesPaymentAmt			:	String	:	21124
+	LedgerMststatusflag				:	String	:	21125
+	VCHSalesQRCodeSt				:	String	:   21126
+	FSMCustID						:	String	:	21127
+	StatusflagStkJrnl				:	String	:	21130
+	SalesStatusflag					:	String	:	21135
+	PurchaseStatusflag				:	String	:	21138
+	RcptPmtStatusflag				:	String	:	21139
+	SalesUploadPath					:	String	:	21140
+	PurchaseUploadPath				:	String	:	21145
+	RcptPmtUploadPath				:	String	:	21150
+	RcptPmtDwnldPath				:	String	:	21155
+	FTPCustomerUpld					:	String	:	21160
+	SupplierUploadFolder			:	String	:	21165
+	
